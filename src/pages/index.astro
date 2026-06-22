@@ -1,48 +1,71 @@
 ---
-import Cms from "../layouts/Cms.astro";
+import CmsLayout from "../layouts/CmsLayout.astro";
 ---
-<Cms title="Artigos — CMS Templum">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
-    <h1 style="font-size:24px;font-weight:800;">Artigos</h1>
-    <a href="/acesso/post/" class="btn">+ Novo artigo</a>
+<CmsLayout title="Painel" active="">
+  <div id="stats" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+    {Array.from({ length: 5 }).map(() => (
+      <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+        <div class="h-3 w-20 bg-gray-100 rounded animate-pulse"></div>
+        <div class="h-7 w-12 bg-gray-100 rounded mt-3 animate-pulse"></div>
+      </div>
+    ))}
   </div>
-  <div style="margin-bottom:14px;"><input id="q" placeholder="Buscar por título…" style="max-width:320px;" /></div>
-  <div class="card">
-    <table>
-      <thead><tr><th>Título</th><th>Categoria</th><th>Status</th><th>Publicado</th><th></th></tr></thead>
-      <tbody id="rows"><tr><td colspan="5" class="muted" style="padding:24px;">Carregando…</td></tr></tbody>
+
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+    <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+      <h2 class="font-extrabold">Artigos recentes</h2>
+      <a href="/acesso/artigos" class="text-sm font-semibold text-brand-ink">Ver todos →</a>
+    </div>
+    <table class="w-full">
+      <thead><tr class="text-[0.65rem] uppercase tracking-widest text-gray-400">
+        <th class="text-left px-5 py-2.5 font-semibold">Título</th>
+        <th class="text-left px-5 py-2.5 font-semibold">Status</th>
+        <th class="text-left px-5 py-2.5 font-semibold">Data</th>
+      </tr></thead>
+      <tbody id="recent"><tr><td colspan="3" class="px-5 py-6 text-sm text-gray-400">Carregando…</td></tr></tbody>
     </table>
   </div>
-  <p class="muted" id="count" style="margin-top:12px;"></p>
 
   <script>
-    import { supabase, requireAuth } from "../lib/supabase.js";
-    await requireAuth();
-    const rows = document.getElementById("rows"), countEl = document.getElementById("count");
-    let all = [];
-    const fmt = (d) => d ? new Date(d).toLocaleDateString("pt-BR", { day:"2-digit", month:"short", year:"numeric" }) : "—";
-    const esc = (s) => (s||"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-    function render(list) {
-      if (!list.length) { rows.innerHTML = '<tr><td colspan="5" class="muted" style="padding:24px;">Nenhum artigo.</td></tr>'; return; }
-      rows.innerHTML = list.map(p => `
-        <tr>
-          <td><a href="/acesso/post/?id=${p.id}"><b>${esc(p.title)}</b></a></td>
-          <td class="muted">${esc(p.category_name)||"—"}</td>
-          <td><span class="pill ${p.status==="published"?"pill--pub":"pill--draft"}">${p.status==="published"?"Publicado":"Rascunho"}</span></td>
-          <td class="muted">${fmt(p.published_at)}</td>
-          <td style="text-align:right;"><a class="btn btn--ghost btn--sm" href="/acesso/post/?id=${p.id}">Editar</a></td>
-        </tr>`).join("");
+    import { supa, requireAuth, esc } from "../lib/supa.ts";
+    import { createIcons, icons } from "lucide";
+    const s = await requireAuth(); if (!s) { /* redirected */ }
+    else {
+      const fmt = (d) => d ? new Date(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+
+      const [tot, pub, draft, comm, cats] = await Promise.all([
+        supa.from("blog_templum_posts").select("id", { count: "exact", head: true }),
+        supa.from("blog_templum_posts").select("id", { count: "exact", head: true }).eq("status", "published"),
+        supa.from("blog_templum_posts").select("id", { count: "exact", head: true }).eq("status", "draft"),
+        supa.from("blog_templum_comments").select("id", { count: "exact", head: true }).eq("status", "pending"),
+        supa.from("blog_templum_categories").select("id", { count: "exact", head: true }),
+      ]);
+      const cards = [
+        { label: "Artigos", value: tot.count ?? 0, icon: "file-text" },
+        { label: "Publicados", value: pub.count ?? 0, icon: "check-circle" },
+        { label: "Rascunhos", value: draft.count ?? 0, icon: "pencil" },
+        { label: "Comentários pendentes", value: comm.count ?? 0, icon: "message-square" },
+        { label: "Categorias", value: cats.count ?? 0, icon: "tag" },
+      ];
+      document.getElementById("stats").innerHTML = cards.map((c) => `
+        <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+          <div class="flex items-center justify-between">
+            <p class="text-[0.7rem] uppercase tracking-widest text-gray-400 font-semibold">${esc(c.label)}</p>
+            <i data-lucide="${c.icon}" class="w-4 h-4 text-brand-orange"></i>
+          </div>
+          <p class="text-3xl font-extrabold mt-2">${c.value}</p>
+        </div>`).join("");
+
+      const { data } = await supa.from("blog_templum_posts")
+        .select("title,slug,status,published_at").order("published_at", { ascending: false, nullsFirst: false }).limit(6);
+      const rows = document.getElementById("recent");
+      rows.innerHTML = (data && data.length) ? data.map((p) => `
+        <tr class="border-t border-gray-100">
+          <td class="px-5 py-3 text-sm"><a href="/acesso/artigos/editar?slug=${encodeURIComponent(p.slug)}" class="font-semibold hover:text-brand-ink">${esc(p.title)}</a></td>
+          <td class="px-5 py-3"><span class="text-[0.7rem] font-bold px-2.5 py-1 rounded-full ${p.status === "published" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}">${p.status === "published" ? "Publicado" : "Rascunho"}</span></td>
+          <td class="px-5 py-3 text-sm text-gray-500">${fmt(p.published_at)}</td>
+        </tr>`).join("") : '<tr><td colspan="3" class="px-5 py-6 text-sm text-gray-400">Nenhum artigo ainda. Importe os posts ou crie um novo.</td></tr>';
+      createIcons({ icons });
     }
-    const { data, error } = await supabase
-      .from("blog_templum_posts")
-      .select("id,title,category_name,status,published_at")
-      .order("published_at", { ascending:false, nullsFirst:false })
-      .limit(500);
-    if (error) { rows.innerHTML = `<tr><td colspan="5" style="color:#b91c1c;padding:24px;">${error.message}</td></tr>`; }
-    else { all = data; render(all); countEl.textContent = `${all.length} artigos`; }
-    document.getElementById("q").addEventListener("input", (e) => {
-      const t = e.target.value.toLowerCase();
-      render(all.filter(p => p.title.toLowerCase().includes(t)));
-    });
   </script>
-</Cms>
+</CmsLayout>

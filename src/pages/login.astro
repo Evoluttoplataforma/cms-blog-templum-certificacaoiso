@@ -1,35 +1,55 @@
 ---
-import Cms from "../layouts/Cms.astro";
+const B = "/acesso";
 ---
-<Cms title="Entrar — CMS Templum" auth={false}>
-  <div style="max-width:380px;margin:8vh auto;">
-    <div class="card" style="padding:30px;">
-      <h1 style="font-size:22px;font-weight:800;margin-bottom:4px;">Templum · CMS</h1>
-      <p class="muted" style="margin-bottom:18px;">Painel do blog certificacaoiso.com.br</p>
-      <form id="f">
-        <label>E-mail</label>
-        <input type="email" id="email" required autocomplete="username" />
-        <label>Senha</label>
-        <input type="password" id="pass" required autocomplete="current-password" />
-        <button class="btn" style="width:100%;justify-content:center;margin-top:20px;" type="submit">Entrar</button>
-        <p id="err" style="color:#b91c1c;font-size:13px;margin-top:12px;display:none;"></p>
-      </form>
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Entrar · Templum CMS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  </head>
+  <body class="min-h-screen bg-brand-navy font-sans text-white grid place-items-center px-4">
+    <div class="w-full max-w-sm">
+      <div class="flex items-center justify-center gap-2 mb-8">
+        <img src={`${B}/logo.png`} alt="Templum" class="h-8 brightness-0 invert" />
+        <span class="text-[0.6rem] font-extrabold tracking-widest bg-brand-orange/20 text-brand-orange px-2 py-0.5 rounded">CMS</span>
+      </div>
+      <div class="bg-white/5 backdrop-blur rounded-2xl border border-white/10 p-8">
+        <h1 class="text-xl font-extrabold mb-1">Entrar</h1>
+        <p class="text-sm text-gray-400 mb-6">Painel do blog certificacaoiso.com.br</p>
+        <form id="f" class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-gray-400 mb-1.5">E-mail</label>
+            <input id="email" type="email" required autocomplete="username"
+              class="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white placeholder-gray-500 focus:border-brand-orange focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-400 mb-1.5">Senha</label>
+            <input id="pass" type="password" required autocomplete="current-password"
+              class="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/15 text-white placeholder-gray-500 focus:border-brand-orange focus:outline-none" />
+          </div>
+          <button type="submit" class="w-full py-3 rounded-full bg-brand-orange text-white font-bold shadow-lg hover:brightness-105 transition">Entrar</button>
+          <p id="err" class="text-sm text-red-400 hidden"></p>
+        </form>
+      </div>
     </div>
-  </div>
-  <script>
-    import { supabase } from "../lib/supabase.js";
-    // já logado? vai pro painel
-    const { data } = await supabase.auth.getSession();
-    if (data.session) location.href = "/acesso/";
-    const f = document.getElementById("f"), err = document.getElementById("err");
-    f.addEventListener("submit", async (e) => {
-      e.preventDefault(); err.style.display = "none";
-      const { error } = await supabase.auth.signInWithPassword({
-        email: document.getElementById("email").value,
-        password: document.getElementById("pass").value,
+    <script>
+      import { supa, BASE } from "../lib/supa.ts";
+      const { data } = await supa.auth.getSession();
+      if (data.session) window.location.href = BASE + "/";
+      const f = document.getElementById("f") as HTMLFormElement;
+      const err = document.getElementById("err") as HTMLElement;
+      f.addEventListener("submit", async (e) => {
+        e.preventDefault(); err.classList.add("hidden");
+        const { error } = await supa.auth.signInWithPassword({
+          email: (document.getElementById("email") as HTMLInputElement).value,
+          password: (document.getElementById("pass") as HTMLInputElement).value,
+        });
+        if (error) { err.textContent = "E-mail ou senha inválidos."; err.classList.remove("hidden"); }
+        else window.location.href = BASE + "/";
       });
-      if (error) { err.textContent = "E-mail ou senha inválidos."; err.style.display = "block"; }
-      else location.href = "/acesso/";
-    });
-  </script>
-</Cms>
+    </script>
+  </body>
+</html>

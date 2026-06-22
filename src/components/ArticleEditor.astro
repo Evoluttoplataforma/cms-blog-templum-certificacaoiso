@@ -1,0 +1,186 @@
+---
+// Editor de artigo (usado por /artigos/novo e /artigos/editar?slug=...).
+// Conteúdo rico = HTML (contenteditable). Salva em blog_templum_posts.
+---
+<div class="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-6 items-start">
+  <!-- COLUNA PRINCIPAL -->
+  <div class="space-y-4">
+    <input id="title" placeholder="Título do artigo"
+      class="w-full text-2xl font-extrabold bg-transparent border-0 focus:outline-none placeholder-gray-300" />
+
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm">
+      <!-- toolbar -->
+      <div class="flex flex-wrap items-center gap-1 px-3 py-2 border-b border-gray-100">
+        <button type="button" data-cmd="formatBlock" data-val="h2" class="tb" title="Título 2"><i data-lucide="heading-2" class="w-4 h-4"></i></button>
+        <button type="button" data-cmd="formatBlock" data-val="h3" class="tb" title="Título 3"><i data-lucide="heading-3" class="w-4 h-4"></i></button>
+        <span class="w-px h-5 bg-gray-200 mx-1"></span>
+        <button type="button" data-cmd="bold" class="tb" title="Negrito"><i data-lucide="bold" class="w-4 h-4"></i></button>
+        <button type="button" data-cmd="italic" class="tb" title="Itálico"><i data-lucide="italic" class="w-4 h-4"></i></button>
+        <button type="button" data-cmd="insertUnorderedList" class="tb" title="Lista"><i data-lucide="list" class="w-4 h-4"></i></button>
+        <span class="w-px h-5 bg-gray-200 mx-1"></span>
+        <button type="button" id="tb-link" class="tb" title="Link"><i data-lucide="link" class="w-4 h-4"></i></button>
+        <button type="button" id="tb-img" class="tb" title="Imagem"><i data-lucide="image" class="w-4 h-4"></i></button>
+      </div>
+      <!-- editor -->
+      <div id="editor" contenteditable="true"
+        class="prose max-w-none px-6 py-5 min-h-[420px] focus:outline-none text-[15px] leading-relaxed"></div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="space-y-4">
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-3">
+      <div class="flex gap-2">
+        <button id="save" class="flex-1 py-2.5 rounded-full border border-gray-300 text-sm font-bold hover:bg-gray-50">Salvar rascunho</button>
+        <button id="publish" class="flex-1 py-2.5 rounded-full bg-brand-ink text-white text-sm font-bold shadow-lg hover:brightness-110">Publicar</button>
+      </div>
+      <p id="msg" class="text-xs text-gray-500"></p>
+      <div class="flex items-center justify-between text-xs text-gray-400 pt-1">
+        <span id="wc">0 palavras</span><span id="rt">0 min de leitura</span>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-3">
+      <div>
+        <label class="lb">Slug (URL)</label>
+        <input id="slug" class="inp" placeholder="meu-artigo" />
+      </div>
+      <div>
+        <label class="lb">Categoria</label>
+        <input id="category_name" class="inp" placeholder="Qualidade e Inovação" />
+      </div>
+      <div>
+        <label class="lb">Autor</label>
+        <input id="author_name" class="inp" placeholder="Equipe Templum" />
+      </div>
+      <div>
+        <label class="lb">Capa</label>
+        <div id="cover-preview" class="aspect-[16/9] rounded-lg bg-gray-100 mb-2 bg-cover bg-center"></div>
+        <div class="flex gap-2">
+          <input id="featured_image" class="inp flex-1" placeholder="URL ou enviar →" />
+          <button id="cover-up" class="px-3 rounded-lg border border-gray-300 text-sm font-semibold hover:bg-gray-50"><i data-lucide="upload" class="w-4 h-4"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-3">
+      <p class="text-[0.65rem] uppercase tracking-widest text-gray-400 font-bold">SEO / IA</p>
+      <div>
+        <label class="lb">Resposta rápida (TL;DR)</label>
+        <textarea id="tldr" rows="3" class="inp"></textarea>
+      </div>
+      <div>
+        <label class="lb">Meta descrição <span id="md-count" class="text-gray-400 font-normal">0/160</span></label>
+        <textarea id="seo_description" rows="2" class="inp" maxlength="200"></textarea>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .tb { padding: 6px; border-radius: 8px; color: #4b5563; }
+  .tb:hover { background: #f3f4f6; }
+  .lb { display:block; font-size:12px; font-weight:700; color:#374151; margin-bottom:4px; }
+  .inp { width:100%; padding:8px 10px; border:1px solid #e5e7eb; border-radius:8px; font-size:14px; }
+  .inp:focus { outline:none; border-color:#FF5925; }
+  #editor h2 { font-size:1.4rem; font-weight:800; margin:1rem 0 .5rem; }
+  #editor h3 { font-size:1.15rem; font-weight:800; margin:.9rem 0 .4rem; }
+  #editor ul { list-style:disc; padding-left:1.4rem; margin:.5rem 0; }
+  #editor a { color:#B23C0C; text-decoration:underline; }
+  #editor img { max-width:100%; border-radius:8px; margin:.6rem 0; }
+  #editor:empty:before { content:"Escreva o conteúdo do artigo…"; color:#9ca3af; }
+</style>
+
+<script>
+  import { supa, requireAuth, uploadMedia, BASE } from "../lib/supa.ts";
+  import { createIcons, icons } from "lucide";
+  const s = await requireAuth();
+  if (s) {
+    const $ = (id) => document.getElementById(id);
+    const editor = $("editor"), msg = $("msg");
+    const slug0 = new URLSearchParams(location.search).get("slug");
+    let editingId = null;
+
+    // toolbar execCommand
+    document.querySelectorAll("[data-cmd]").forEach((b) => b.addEventListener("click", () => {
+      const cmd = b.getAttribute("data-cmd"), val = b.getAttribute("data-val");
+      editor.focus(); document.execCommand(cmd, false, val ? `<${val}>` : undefined); updateCounts();
+    }));
+    $("tb-link").addEventListener("click", () => { const u = prompt("URL do link:"); if (u) { editor.focus(); document.execCommand("createLink", false, u); } });
+    $("tb-img").addEventListener("click", () => pickImage((url) => { editor.focus(); document.execCommand("insertImage", false, url); }));
+
+    // upload helper
+    function pickImage(cb) {
+      const inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/*";
+      inp.onchange = async () => {
+        if (!inp.files?.[0]) return; msg.textContent = "Enviando imagem…";
+        try { const url = await uploadMedia(inp.files[0], "artigos"); cb(url); msg.textContent = ""; }
+        catch (e) { msg.textContent = "Erro no upload (bucket 'media' existe?): " + e.message; }
+      };
+      inp.click();
+    }
+    $("cover-up").addEventListener("click", () => pickImage((url) => { $("featured_image").value = url; setCover(url); }));
+    $("featured_image").addEventListener("input", (e) => setCover(e.target.value));
+    function setCover(url) { $("cover-preview").style.backgroundImage = url ? `url("${url}")` : ""; }
+
+    // auto-slug (só em novo)
+    $("title").addEventListener("input", (e) => {
+      if (!editingId && !$("slug").dataset.touched) $("slug").value = e.target.value.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    });
+    $("slug").addEventListener("input", () => { $("slug").dataset.touched = "1"; });
+
+    // contadores
+    function updateCounts() {
+      const txt = editor.innerText.trim();
+      const w = txt ? txt.split(/\s+/).length : 0;
+      $("wc").textContent = w + " palavras"; $("rt").textContent = Math.max(1, Math.round(w / 200)) + " min de leitura";
+    }
+    editor.addEventListener("input", updateCounts);
+    $("seo_description").addEventListener("input", (e) => $("md-count").textContent = e.target.value.length + "/160");
+
+    // carrega (edição)
+    if (slug0) {
+      const { data, error } = await supa.from("blog_templum_posts").select("*").eq("slug", slug0).single();
+      if (error) msg.textContent = error.message;
+      else if (data) {
+        editingId = data.id;
+        $("title").value = data.title || ""; $("slug").value = data.slug || ""; $("slug").dataset.touched = "1";
+        $("category_name").value = data.category_name || ""; $("author_name").value = data.author_name || "";
+        $("featured_image").value = data.featured_image || ""; setCover(data.featured_image);
+        $("tldr").value = data.tldr || ""; $("seo_description").value = data.seo_description || "";
+        editor.innerHTML = data.content || ""; updateCounts();
+        $("md-count").textContent = ($("seo_description").value.length) + "/160";
+      }
+    }
+
+    async function persist(status) {
+      const title = $("title").value.trim(), slug = $("slug").value.trim();
+      if (!title || !slug) { msg.textContent = "Título e slug são obrigatórios."; return; }
+      const txt = editor.innerText.trim(); const wc = txt ? txt.split(/\s+/).length : 0;
+      const row = {
+        title, slug, content: editor.innerHTML,
+        excerpt: $("seo_description").value || null,
+        tldr: $("tldr").value || null,
+        category_name: $("category_name").value || null,
+        author_name: $("author_name").value || "Equipe Templum",
+        featured_image: $("featured_image").value || null,
+        seo_description: $("seo_description").value || null,
+        reading_time_min: Math.max(1, Math.round(wc / 200)),
+        status,
+      };
+      if (status === "published") row.published_at = new Date().toISOString();
+      msg.textContent = "Salvando…";
+      let res;
+      if (editingId) res = await supa.from("blog_templum_posts").update(row).eq("id", editingId).select().single();
+      else res = await supa.from("blog_templum_posts").insert(row).select().single();
+      if (res.error) { msg.textContent = "Erro: " + res.error.message; return; }
+      editingId = res.data.id;
+      msg.textContent = status === "published" ? "Publicado ✓ (o site reconstrói em ~2 min)" : "Rascunho salvo ✓";
+      if (!slug0) history.replaceState(null, "", `${BASE}/artigos/editar?slug=${encodeURIComponent(slug)}`);
+      // TODO Fase 4: ao publicar, chamar Edge Function 'rebuild'
+    }
+    $("save").addEventListener("click", () => persist("draft"));
+    $("publish").addEventListener("click", () => persist("published"));
+    createIcons({ icons });
+  }
+</script>

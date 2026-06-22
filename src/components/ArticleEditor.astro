@@ -175,9 +175,14 @@
       else res = await supa.from("blog_templum_posts").insert(row).select().single();
       if (res.error) { msg.textContent = "Erro: " + res.error.message; return; }
       editingId = res.data.id;
-      msg.textContent = status === "published" ? "Publicado ✓ (o site reconstrói em ~2 min)" : "Rascunho salvo ✓";
       if (!slug0) history.replaceState(null, "", `${BASE}/artigos/editar?slug=${encodeURIComponent(slug)}`);
-      // TODO Fase 4: ao publicar, chamar Edge Function 'rebuild'
+      if (status === "published") {
+        msg.textContent = "Publicado ✓ — disparando rebuild do site…";
+        const { error } = await supa.functions.invoke("rebuild");
+        msg.textContent = error ? "Publicado ✓ (rebuild manual: a função 'rebuild' já está no ar?)" : "Publicado ✓ — o site reconstrói em ~2 min.";
+      } else {
+        msg.textContent = "Rascunho salvo ✓";
+      }
     }
     $("save").addEventListener("click", () => persist("draft"));
     $("publish").addEventListener("click", () => persist("published"));

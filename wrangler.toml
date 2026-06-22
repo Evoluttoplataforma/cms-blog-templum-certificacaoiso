@@ -1,0 +1,10 @@
+# Cloudflare Workers — CMS do blog (painel estático, auth client-side).
+name = "certificacaoiso-cms"
+compatibility_date = "2025-01-01"
+
+[assets]
+directory = "./dist"
+not_found_handling = "single-page-application"
+
+# Variables no painel (Plaintext, públicas):
+#   PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY

@@ -1,0 +1,63 @@
+---
+import CmsLayout from "../layouts/CmsLayout.astro";
+---
+<CmsLayout title="Usuários" active="usuarios">
+  <button slot="actions" id="new" class="px-4 py-2 rounded-full bg-brand-ink text-white text-sm font-bold shadow-lg hover:brightness-110 flex items-center gap-1.5"><i data-lucide="user-plus" class="w-4 h-4"></i> Novo usuário</button>
+
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+    <table class="w-full">
+      <thead><tr class="text-[0.65rem] uppercase tracking-widest text-gray-400 border-b border-gray-100">
+        <th class="text-left px-5 py-3 font-semibold">Nome</th><th class="text-left px-5 py-3 font-semibold">E-mail</th><th class="text-left px-5 py-3 font-semibold">Papel</th><th></th>
+      </tr></thead>
+      <tbody id="rows"><tr><td colspan="4" class="px-5 py-8 text-sm text-gray-400">Carregando…</td></tr></tbody>
+    </table>
+  </div>
+
+  <dialog id="dlg" class="rounded-2xl p-0 w-full max-w-md backdrop:bg-black/40">
+    <form id="form" class="p-6 space-y-3">
+      <h3 class="font-extrabold text-lg">Novo colaborador</h3>
+      <p class="text-xs text-gray-500">Cria o acesso (Supabase Auth) e envia o convite por e-mail.</p>
+      <div><label class="lb">Nome</label><input id="full_name" class="inp" /></div>
+      <div><label class="lb">E-mail</label><input id="email" type="email" class="inp" required /></div>
+      <div><label class="lb">Papel</label><select id="role" class="inp"><option value="editor">Editor</option><option value="admin">Admin</option></select></div>
+      <p id="msg" class="text-xs text-gray-500"></p>
+      <div class="flex gap-2 justify-end pt-2"><button type="button" id="cancel" class="px-4 py-2 rounded-full border border-gray-300 text-sm font-bold">Cancelar</button><button type="submit" class="px-4 py-2 rounded-full bg-brand-ink text-white text-sm font-bold">Convidar</button></div>
+    </form>
+  </dialog>
+  <style>.lb{display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:4px}.inp{width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px}.inp:focus{outline:none;border-color:#FF5925}</style>
+
+  <script>
+    import { supa, requireAuth, esc } from "../lib/supa.ts";
+    import { createIcons, icons } from "lucide";
+    const s = await requireAuth();
+    if (s) {
+      const T = "blog_templum_members", rows = document.getElementById("rows"), dlg = document.getElementById("dlg"), form = document.getElementById("form");
+      const $ = (id) => document.getElementById(id);
+      async function load() {
+        const { data, error } = await supa.from(T).select("*").order("created_at");
+        if (error) { rows.innerHTML = `<tr><td colspan="4" class="px-5 py-8 text-sm text-red-600">${esc(error.message)}</td></tr>`; return; }
+        rows.innerHTML = (data && data.length) ? data.map((m) => `
+          <tr class="border-t border-gray-100">
+            <td class="px-5 py-3 text-sm font-semibold">${esc(m.full_name) || "—"}</td>
+            <td class="px-5 py-3 text-sm text-gray-500">${esc(m.email)}</td>
+            <td class="px-5 py-3"><button data-role="${m.id}" data-v="${m.role}" class="text-[0.7rem] font-bold px-2.5 py-1 rounded-full ${m.role === "admin" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}">${m.role}</button></td>
+            <td class="px-5 py-3 text-right"><button data-del="${m.id}" class="inline-grid w-8 h-8 place-items-center rounded-lg text-gray-400 hover:text-red-600 hover:bg-gray-100"><i data-lucide="trash-2" class="w-4 h-4"></i></button></td>
+          </tr>`).join("") : '<tr><td colspan="4" class="px-5 py-8 text-sm text-gray-400">Só você por enquanto.</td></tr>';
+        rows.querySelectorAll("[data-role]").forEach((b) => b.addEventListener("click", async () => { await supa.from(T).update({ role: b.dataset.v === "admin" ? "editor" : "admin" }).eq("id", b.dataset.role); load(); }));
+        rows.querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", async () => { if (confirm("Remover colaborador?")) { await supa.from(T).delete().eq("id", b.dataset.del); load(); } }));
+        createIcons({ icons });
+      }
+      document.getElementById("new").addEventListener("click", () => { form.reset(); $("msg").textContent = ""; dlg.showModal(); });
+      document.getElementById("cancel").addEventListener("click", () => dlg.close());
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault(); $("msg").textContent = "Convidando…";
+        const body = { full_name: $("full_name").value, email: $("email").value, role: $("role").value };
+        // Edge Function create-user (Fase 4) — usa service_role p/ criar no Auth
+        const { error } = await supa.functions.invoke("create-user", { body });
+        if (error) $("msg").textContent = "Erro (a Edge Function 'create-user' já está no ar?): " + error.message;
+        else { dlg.close(); load(); }
+      });
+      load();
+    }
+  </script>
+</CmsLayout>

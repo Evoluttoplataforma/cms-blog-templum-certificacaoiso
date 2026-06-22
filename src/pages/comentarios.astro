@@ -1,0 +1,63 @@
+---
+import CmsLayout from "../layouts/CmsLayout.astro";
+---
+<CmsLayout title="Comentários" active="comentarios">
+  <div class="flex gap-2 mb-4" id="tabs">
+    <button data-tab="pending" class="tab tab-on">Pendentes</button>
+    <button data-tab="approved" class="tab">Aprovados</button>
+    <button data-tab="all" class="tab">Todos</button>
+  </div>
+  <div id="list" class="space-y-3"><p class="text-sm text-gray-400">Carregando…</p></div>
+
+  <style>
+    .tab { padding:7px 16px; border-radius:999px; font-size:13px; font-weight:700; border:1px solid #e5e7eb; background:#fff; color:#6b7280; }
+    .tab-on { background:#222831; color:#fff; border-color:#222831; }
+  </style>
+
+  <script>
+    import { supa, requireAuth, esc } from "../lib/supa.ts";
+    import { createIcons, icons } from "lucide";
+    const s = await requireAuth();
+    if (s) {
+      const list = document.getElementById("list");
+      let tab = "pending";
+      const fmt = (d) => new Date(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
+
+      async function load() {
+        let q = supa.from("blog_templum_comments").select("*, blog_templum_posts(title,slug)").order("created_at", { ascending: false });
+        if (tab !== "all") q = q.eq("status", tab);
+        const { data, error } = await q.limit(300);
+        if (error) { list.innerHTML = `<p class="text-sm text-red-600">${esc(error.message)}</p>`; return; }
+        list.innerHTML = (data && data.length) ? data.map((c) => `
+          <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+            <div class="flex items-start justify-between gap-4">
+              <div class="min-w-0">
+                <p class="text-sm"><b>${esc(c.author_name)}</b> <span class="text-gray-400">· ${esc(c.author_email) || ""} · ${fmt(c.created_at)}</span></p>
+                <p class="text-xs text-gray-400 mt-0.5">em: ${esc(c.blog_templum_posts?.title) || "—"}</p>
+                <p class="text-sm text-gray-700 mt-2">${esc(c.content)}</p>
+              </div>
+              <span class="text-[0.7rem] font-bold px-2.5 py-1 rounded-full shrink-0 ${c.status === "approved" ? "bg-green-100 text-green-700" : c.status === "spam" ? "bg-gray-200 text-gray-600" : "bg-amber-100 text-amber-700"}">${c.status}</span>
+            </div>
+            <div class="flex gap-2 mt-3">
+              ${c.status !== "approved" ? `<button data-act="approved" data-id="${c.id}" class="px-3 py-1.5 rounded-full bg-green-600 text-white text-xs font-bold">Aprovar</button>` : ""}
+              ${c.status !== "spam" ? `<button data-act="spam" data-id="${c.id}" class="px-3 py-1.5 rounded-full border border-gray-300 text-xs font-bold">Rejeitar</button>` : ""}
+              <button data-del="${c.id}" class="px-3 py-1.5 rounded-full border border-red-200 text-red-600 text-xs font-bold">Excluir</button>
+            </div>
+          </div>`).join("") : '<p class="text-sm text-gray-400">Nenhum comentário aqui.</p>';
+        list.querySelectorAll("[data-act]").forEach((b) => b.addEventListener("click", async () => {
+          await supa.from("blog_templum_comments").update({ status: b.dataset.act }).eq("id", b.dataset.id); load();
+        }));
+        list.querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", async () => {
+          if (confirm("Excluir comentário?")) { await supa.from("blog_templum_comments").delete().eq("id", b.dataset.del); load(); }
+        }));
+        createIcons({ icons });
+      }
+      document.querySelectorAll("#tabs [data-tab]").forEach((b) => b.addEventListener("click", () => {
+        tab = b.dataset.tab;
+        document.querySelectorAll("#tabs .tab").forEach((x) => x.classList.remove("tab-on"));
+        b.classList.add("tab-on"); load();
+      }));
+      load();
+    }
+  </script>
+</CmsLayout>

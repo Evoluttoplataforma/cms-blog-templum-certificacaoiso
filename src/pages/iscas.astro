@@ -1,0 +1,82 @@
+---
+import CmsLayout from "../layouts/CmsLayout.astro";
+---
+<CmsLayout title="Iscas" active="iscas">
+  <button slot="actions" id="new" class="px-4 py-2 rounded-full bg-brand-ink text-white text-sm font-bold shadow-lg hover:brightness-110 flex items-center gap-1.5"><i data-lucide="plus" class="w-4 h-4"></i> Nova isca</button>
+
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+    <table class="w-full">
+      <thead><tr class="text-[0.65rem] uppercase tracking-widest text-gray-400 border-b border-gray-100">
+        <th class="text-left px-5 py-3 font-semibold">Título</th><th class="text-left px-5 py-3 font-semibold">Tipo</th>
+        <th class="text-left px-5 py-3 font-semibold">Downloads</th><th class="text-left px-5 py-3 font-semibold">Ativa</th><th></th>
+      </tr></thead>
+      <tbody id="rows"><tr><td colspan="5" class="px-5 py-8 text-sm text-gray-400">Carregando…</td></tr></tbody>
+    </table>
+  </div>
+
+  <dialog id="dlg" class="rounded-2xl p-0 w-full max-w-md backdrop:bg-black/40">
+    <form id="form" class="p-6 space-y-3">
+      <h3 class="font-extrabold text-lg" id="dlg-title">Nova isca</h3>
+      <input type="hidden" id="id" />
+      <div><label class="lb">Título</label><input id="title" class="inp" required /></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="lb">Tipo</label><input id="type" class="inp" placeholder="ebook, planilha…" /></div>
+        <div><label class="lb">CTA</label><input id="cta" class="inp" placeholder="Baixar agora" /></div>
+      </div>
+      <div><label class="lb">Arquivo (URL)</label><input id="file_url" class="inp" placeholder="https://…" /></div>
+      <div><label class="lb">Descrição</label><textarea id="description" rows="2" class="inp"></textarea></div>
+      <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="active" checked /> Ativa</label>
+      <div class="flex gap-2 justify-end pt-2">
+        <button type="button" id="cancel" class="px-4 py-2 rounded-full border border-gray-300 text-sm font-bold">Cancelar</button>
+        <button type="submit" class="px-4 py-2 rounded-full bg-brand-ink text-white text-sm font-bold">Salvar</button>
+      </div>
+    </form>
+  </dialog>
+  <style>.lb{display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:4px}.inp{width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px}.inp:focus{outline:none;border-color:#FF5925}</style>
+
+  <script>
+    import { supa, requireAuth, esc } from "../lib/supa.ts";
+    import { createIcons, icons } from "lucide";
+    const s = await requireAuth();
+    if (s) {
+      const T = "blog_templum_iscas";
+      const rows = document.getElementById("rows"), dlg = document.getElementById("dlg"), form = document.getElementById("form");
+      const $ = (id) => document.getElementById(id);
+      async function load() {
+        const { data, error } = await supa.from(T).select("*").order("created_at", { ascending: false });
+        if (error) { rows.innerHTML = `<tr><td colspan="5" class="px-5 py-8 text-sm text-red-600">${esc(error.message)}</td></tr>`; return; }
+        rows.innerHTML = (data && data.length) ? data.map((i) => `
+          <tr class="border-t border-gray-100">
+            <td class="px-5 py-3 text-sm font-semibold">${esc(i.title)}</td>
+            <td class="px-5 py-3 text-sm text-gray-500">${esc(i.type) || "—"}</td>
+            <td class="px-5 py-3 text-sm text-gray-500">${i.downloads || 0}</td>
+            <td class="px-5 py-3"><button data-toggle="${i.id}" data-v="${i.active}" class="text-[0.7rem] font-bold px-2.5 py-1 rounded-full ${i.active ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-600"}">${i.active ? "Ativa" : "Inativa"}</button></td>
+            <td class="px-5 py-3 text-right whitespace-nowrap">
+              <button data-edit='${esc(JSON.stringify(i))}' class="inline-grid w-8 h-8 place-items-center rounded-lg text-gray-400 hover:text-brand-ink hover:bg-gray-100"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+              <button data-del="${i.id}" class="inline-grid w-8 h-8 place-items-center rounded-lg text-gray-400 hover:text-red-600 hover:bg-gray-100"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+            </td>
+          </tr>`).join("") : '<tr><td colspan="5" class="px-5 py-8 text-sm text-gray-400">Nenhuma isca.</td></tr>';
+        rows.querySelectorAll("[data-toggle]").forEach((b) => b.addEventListener("click", async () => { await supa.from(T).update({ active: b.dataset.v !== "true" }).eq("id", b.dataset.toggle); load(); }));
+        rows.querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", async () => { if (confirm("Excluir isca?")) { await supa.from(T).delete().eq("id", b.dataset.del); load(); } }));
+        rows.querySelectorAll("[data-edit]").forEach((b) => b.addEventListener("click", () => openForm(JSON.parse(b.dataset.edit))));
+        createIcons({ icons });
+      }
+      function openForm(d = {}) {
+        $("dlg-title").textContent = d.id ? "Editar isca" : "Nova isca";
+        for (const k of ["id", "title", "type", "cta", "file_url", "description"]) $(k).value = d[k] || "";
+        $("active").checked = d.id ? !!d.active : true;
+        dlg.showModal();
+      }
+      document.getElementById("new").addEventListener("click", () => openForm());
+      document.getElementById("cancel").addEventListener("click", () => dlg.close());
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const row = { title: $("title").value, type: $("type").value || null, cta: $("cta").value || null, file_url: $("file_url").value || null, description: $("description").value || null, active: $("active").checked };
+        const id = $("id").value;
+        const res = id ? await supa.from(T).update(row).eq("id", id) : await supa.from(T).insert(row);
+        if (res.error) alert(res.error.message); else { dlg.close(); load(); }
+      });
+      load();
+    }
+  </script>
+</CmsLayout>

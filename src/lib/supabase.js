@@ -10,6 +10,6 @@ export const supabase = createClient(URL, ANON);
 // Redireciona pro login se não houver sessão. Retorna a sessão ou null.
 export async function requireAuth() {
   const { data } = await supabase.auth.getSession();
-  if (!data.session) { location.href = "/login/"; return null; }
+  if (!data.session) { location.href = "/acesso/login/"; return null; }
   return data.session;
 }

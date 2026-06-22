@@ -41,8 +41,8 @@ const { title = "CMS — Blog Templum", auth = true } = Astro.props;
       <header class="top">
         <b>Templum · CMS</b>
         <nav>
-          <a href="/">Artigos</a>
-          <a href="/colaboradores/">Colaboradores</a>
+          <a href="/acesso/">Artigos</a>
+          <a href="/acesso/colaboradores/">Colaboradores</a>
         </nav>
         <div class="sp"><span id="whoami"></span><button class="btn btn--ghost btn--sm" id="logout">Sair</button></div>
       </header>
@@ -57,7 +57,7 @@ const { title = "CMS — Blog Templum", auth = true } = Astro.props;
           const el = document.getElementById("whoami");
           if (el) el.textContent = s.user.email;
           document.getElementById("logout")?.addEventListener("click", async () => {
-            await supabase.auth.signOut(); location.href = "/login/";
+            await supabase.auth.signOut(); location.href = "/acesso/login/";
           });
         }
       </script>

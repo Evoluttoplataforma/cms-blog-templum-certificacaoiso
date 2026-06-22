@@ -2,7 +2,7 @@
 import Cms from "../layouts/Cms.astro";
 ---
 <Cms title="Editar artigo — CMS Templum">
-  <a href="/" class="muted">← Voltar</a>
+  <a href="/acesso/" class="muted">← Voltar</a>
   <h1 id="head" style="font-size:24px;font-weight:800;margin:8px 0 18px;">Novo artigo</h1>
 
   <div style="display:grid;grid-template-columns:1fr 300px;gap:24px;align-items:start;">
@@ -76,13 +76,13 @@ import Cms from "../layouts/Cms.astro";
       else    res = await supabase.from("blog_templum_posts").insert(row).select().single();
       if (res.error) { msg.textContent = "Erro: " + res.error.message; return; }
       msg.textContent = "Salvo ✓";
-      if (!id) location.href = "/post/?id=" + res.data.id;
+      if (!id) location.href = "/acesso/post/?id=" + res.data.id;
     });
 
     g("del").addEventListener("click", async () => {
       if (!confirm("Excluir este artigo?")) return;
       const { error } = await supabase.from("blog_templum_posts").delete().eq("id", id);
-      if (error) msg.textContent = error.message; else location.href = "/";
+      if (error) msg.textContent = error.message; else location.href = "/acesso/";
     });
   </script>
 </Cms>

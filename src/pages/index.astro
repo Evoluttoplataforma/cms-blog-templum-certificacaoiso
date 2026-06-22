@@ -4,7 +4,7 @@ import Cms from "../layouts/Cms.astro";
 <Cms title="Artigos — CMS Templum">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
     <h1 style="font-size:24px;font-weight:800;">Artigos</h1>
-    <a href="/post/" class="btn">+ Novo artigo</a>
+    <a href="/acesso/post/" class="btn">+ Novo artigo</a>
   </div>
   <div style="margin-bottom:14px;"><input id="q" placeholder="Buscar por título…" style="max-width:320px;" /></div>
   <div class="card">
@@ -26,11 +26,11 @@ import Cms from "../layouts/Cms.astro";
       if (!list.length) { rows.innerHTML = '<tr><td colspan="5" class="muted" style="padding:24px;">Nenhum artigo.</td></tr>'; return; }
       rows.innerHTML = list.map(p => `
         <tr>
-          <td><a href="/post/?id=${p.id}"><b>${esc(p.title)}</b></a></td>
+          <td><a href="/acesso/post/?id=${p.id}"><b>${esc(p.title)}</b></a></td>
           <td class="muted">${esc(p.category_name)||"—"}</td>
           <td><span class="pill ${p.status==="published"?"pill--pub":"pill--draft"}">${p.status==="published"?"Publicado":"Rascunho"}</span></td>
           <td class="muted">${fmt(p.published_at)}</td>
-          <td style="text-align:right;"><a class="btn btn--ghost btn--sm" href="/post/?id=${p.id}">Editar</a></td>
+          <td style="text-align:right;"><a class="btn btn--ghost btn--sm" href="/acesso/post/?id=${p.id}">Editar</a></td>
         </tr>`).join("");
     }
     const { data, error } = await supabase

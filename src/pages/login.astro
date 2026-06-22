@@ -20,7 +20,7 @@ import Cms from "../layouts/Cms.astro";
     import { supabase } from "../lib/supabase.js";
     // já logado? vai pro painel
     const { data } = await supabase.auth.getSession();
-    if (data.session) location.href = "/";
+    if (data.session) location.href = "/acesso/";
     const f = document.getElementById("f"), err = document.getElementById("err");
     f.addEventListener("submit", async (e) => {
       e.preventDefault(); err.style.display = "none";
@@ -29,7 +29,7 @@ import Cms from "../layouts/Cms.astro";
         password: document.getElementById("pass").value,
       });
       if (error) { err.textContent = "E-mail ou senha inválidos."; err.style.display = "block"; }
-      else location.href = "/";
+      else location.href = "/acesso/";
     });
   </script>
 </Cms>

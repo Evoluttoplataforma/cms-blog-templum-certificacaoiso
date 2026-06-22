@@ -1,10 +1,18 @@
-# Cloudflare Workers — CMS do blog (painel estático, auth client-side).
+# Cloudflare Workers — CMS do blog, servido em certificacaoiso.com.br/acesso
 name = "certificacaoiso-cms"
+main = "worker.js"
 compatibility_date = "2025-01-01"
 
 [assets]
 directory = "./dist"
+binding = "ASSETS"
 not_found_handling = "single-page-application"
 
-# Variables no painel (Plaintext, públicas):
+# Rota: liga o /acesso/* deste Worker ao domínio (ativar quando o domínio estiver
+# na Cloudflare — pode ser por aqui OU no painel: Worker → Domains & Routes → Route).
+# routes = [
+#   { pattern = "certificacaoiso.com.br/acesso*", zone_name = "certificacaoiso.com.br" }
+# ]
+
+# Variables no painel (Plaintext, públicas) — opcional, já há fallback no código:
 #   PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY

@@ -1,0 +1,88 @@
+---
+import Cms from "../layouts/Cms.astro";
+---
+<Cms title="Editar artigo — CMS Templum">
+  <a href="/" class="muted">← Voltar</a>
+  <h1 id="head" style="font-size:24px;font-weight:800;margin:8px 0 18px;">Novo artigo</h1>
+
+  <div style="display:grid;grid-template-columns:1fr 300px;gap:24px;align-items:start;">
+    <div class="card" style="padding:22px;">
+      <label>Título *</label>
+      <input id="title" />
+      <label>Slug (URL) *</label>
+      <input id="slug" placeholder="meu-artigo" />
+      <label>Resposta rápida (TL;DR — answer-first p/ IA/SEO)</label>
+      <textarea id="tldr" rows="2"></textarea>
+      <label>Resumo (excerpt)</label>
+      <textarea id="excerpt" rows="2"></textarea>
+      <label>Conteúdo (markdown) *</label>
+      <textarea id="content" rows="20" style="font-family:ui-monospace,monospace;font-size:13px;"></textarea>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div class="card" style="padding:18px;">
+        <label style="margin-top:0;">Status</label>
+        <select id="status"><option value="draft">Rascunho</option><option value="published">Publicado</option></select>
+        <label>Categoria</label>
+        <input id="category_name" placeholder="Qualidade e Inovação" />
+        <label>Autor</label>
+        <input id="author_name" placeholder="Equipe Templum" />
+        <label>Imagem de capa (URL)</label>
+        <input id="featured_image" placeholder="/wp-content/uploads/..." />
+        <div style="display:flex;gap:8px;margin-top:18px;">
+          <button class="btn" id="save" style="flex:1;justify-content:center;">Salvar</button>
+          <button class="btn btn--ghost" id="del" title="Excluir" style="display:none;">🗑</button>
+        </div>
+        <p id="msg" class="muted" style="margin-top:10px;"></p>
+      </div>
+      <div class="card" style="padding:18px;">
+        <label style="margin-top:0;">SEO title</label>
+        <input id="seo_title" />
+        <label>SEO description</label>
+        <textarea id="seo_description" rows="2"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    import { supabase, requireAuth } from "../lib/supabase.js";
+    await requireAuth();
+    const id = new URLSearchParams(location.search).get("id");
+    const F = ["title","slug","tldr","excerpt","content","status","category_name","author_name","featured_image","seo_title","seo_description"];
+    const g = (k) => document.getElementById(k);
+    const msg = g("msg");
+
+    // auto-slug a partir do título (só em novo)
+    if (!id) g("title").addEventListener("input", (e) => {
+      g("slug").value = e.target.value.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"")
+        .replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
+    });
+
+    if (id) {
+      document.getElementById("head").textContent = "Editar artigo";
+      g("del").style.display = "inline-flex";
+      const { data, error } = await supabase.from("blog_templum_posts").select("*").eq("id", id).single();
+      if (error) msg.textContent = error.message;
+      else for (const k of F) if (data[k] != null) g(k).value = data[k];
+    }
+
+    g("save").addEventListener("click", async () => {
+      msg.textContent = "Salvando…";
+      const row = {}; for (const k of F) row[k] = g(k).value || null;
+      if (!row.title || !row.slug || !row.content) { msg.textContent = "Título, slug e conteúdo são obrigatórios."; return; }
+      if (row.status === "published") row.published_at = new Date().toISOString();
+      let res;
+      if (id) res = await supabase.from("blog_templum_posts").update(row).eq("id", id).select().single();
+      else    res = await supabase.from("blog_templum_posts").insert(row).select().single();
+      if (res.error) { msg.textContent = "Erro: " + res.error.message; return; }
+      msg.textContent = "Salvo ✓";
+      if (!id) location.href = "/post/?id=" + res.data.id;
+    });
+
+    g("del").addEventListener("click", async () => {
+      if (!confirm("Excluir este artigo?")) return;
+      const { error } = await supabase.from("blog_templum_posts").delete().eq("id", id);
+      if (error) msg.textContent = error.message; else location.href = "/";
+    });
+  </script>
+</Cms>

@@ -28,3 +28,6 @@ export async function uploadMedia(file: File, folder: string): Promise<string> {
 export function esc(s: any): string {
   return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
 }
+
+// Resolve imagem relativa (/wp-content/...) p/ o domínio do blog.
+export function imgUrl(u){ return !u ? "" : (u.startsWith("/") ? "https://certificacaoiso.com.br"+u : u); }

@@ -1,70 +1,83 @@
 ---
 import CmsLayout from "../layouts/CmsLayout.astro";
 ---
-<CmsLayout title="Painel" active="">
-  <div id="stats" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+<CmsLayout title="Dashboard" active="dashboard">
+  <a slot="actions" href="/acesso/artigos/novo" class="px-4 py-2 rounded-full bg-brand-ink text-white text-sm font-bold shadow-lg hover:brightness-110 flex items-center gap-1.5"><i data-lucide="square-pen" class="w-4 h-4"></i> Novo Artigo</a>
+
+  <div id="stats" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5 mb-6">
     {Array.from({ length: 5 }).map(() => (
-      <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-        <div class="h-3 w-20 bg-gray-100 rounded animate-pulse"></div>
-        <div class="h-7 w-12 bg-gray-100 rounded mt-3 animate-pulse"></div>
+      <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+        <div class="h-3 w-24 bg-gray-100 rounded animate-pulse"></div>
+        <div class="h-8 w-14 bg-gray-100 rounded mt-3 animate-pulse"></div>
       </div>
     ))}
   </div>
 
   <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-    <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-      <h2 class="font-extrabold">Artigos recentes</h2>
-      <a href="/acesso/artigos" class="text-sm font-semibold text-brand-ink">Ver todos →</a>
+    <div class="px-6 py-5 flex items-center justify-between">
+      <h2 class="font-extrabold text-base">Artigos recentes</h2>
+      <a href="/acesso/artigos" class="text-sm font-bold text-brand-ink">Ver todos</a>
     </div>
     <table class="w-full">
-      <thead><tr class="text-[0.65rem] uppercase tracking-widest text-gray-400">
-        <th class="text-left px-5 py-2.5 font-semibold">Título</th>
-        <th class="text-left px-5 py-2.5 font-semibold">Status</th>
-        <th class="text-left px-5 py-2.5 font-semibold">Data</th>
+      <thead><tr class="text-[0.65rem] uppercase tracking-widest text-gray-400 border-y border-gray-100 bg-gray-50/40">
+        <th class="text-left px-6 py-2.5 font-semibold">Título</th>
+        <th class="text-left px-6 py-2.5 font-semibold">Categoria</th>
+        <th class="text-left px-6 py-2.5 font-semibold">Status</th>
+        <th class="text-left px-6 py-2.5 font-semibold">Data</th>
+        <th class="text-right px-6 py-2.5 font-semibold">Ações</th>
       </tr></thead>
-      <tbody id="recent"><tr><td colspan="3" class="px-5 py-6 text-sm text-gray-400">Carregando…</td></tr></tbody>
+      <tbody id="recent"><tr><td colspan="5" class="px-6 py-8 text-sm text-gray-400">Carregando…</td></tr></tbody>
     </table>
   </div>
 
   <script>
-    import { supa, requireAuth, esc } from "../lib/supa.ts";
+    import { supa, requireAuth, esc, imgUrl } from "../lib/supa.ts";
     import { createIcons, icons } from "lucide";
-    const s = await requireAuth(); if (!s) { /* redirected */ }
-    else {
-      const fmt = (d) => d ? new Date(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+    const s = await requireAuth();
+    if (s) {
+      const fmt = (d) => d ? new Date(d).toLocaleDateString("pt-BR") : "—";
+      const cnt = (t, f) => { let q = supa.from(t).select("id", { count: "exact", head: true }); if (f) q = f(q); return q.then((r) => r.count ?? 0); };
 
-      const [tot, pub, draft, comm, cats] = await Promise.all([
-        supa.from("blog_templum_posts").select("id", { count: "exact", head: true }),
-        supa.from("blog_templum_posts").select("id", { count: "exact", head: true }).eq("status", "published"),
-        supa.from("blog_templum_posts").select("id", { count: "exact", head: true }).eq("status", "draft"),
-        supa.from("blog_templum_comments").select("id", { count: "exact", head: true }).eq("status", "pending"),
-        supa.from("blog_templum_categories").select("id", { count: "exact", head: true }),
+      const [tot, pub, draft, users, hist] = await Promise.all([
+        cnt("blog_templum_posts"),
+        cnt("blog_templum_posts", (q) => q.eq("status", "published")),
+        cnt("blog_templum_posts", (q) => q.eq("status", "draft")),
+        cnt("blog_templum_members"),
+        cnt("blog_templum_historias", (q) => q.eq("status", "pending")).catch(() => 0),
       ]);
       const cards = [
-        { label: "Artigos", value: tot.count ?? 0, icon: "file-text" },
-        { label: "Publicados", value: pub.count ?? 0, icon: "check-circle" },
-        { label: "Rascunhos", value: draft.count ?? 0, icon: "pencil" },
-        { label: "Comentários pendentes", value: comm.count ?? 0, icon: "message-square" },
-        { label: "Categorias", value: cats.count ?? 0, icon: "tag" },
+        { label: "Total de artigos", value: tot },
+        { label: "Publicados", value: pub, accent: true },
+        { label: "Rascunhos", value: draft },
+        { label: "Usuários", value: users },
+        { label: "Histórias pendentes", value: hist },
       ];
       document.getElementById("stats").innerHTML = cards.map((c) => `
-        <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-          <div class="flex items-center justify-between">
-            <p class="text-[0.7rem] uppercase tracking-widest text-gray-400 font-semibold">${esc(c.label)}</p>
-            <i data-lucide="${c.icon}" class="w-4 h-4 text-brand-orange"></i>
-          </div>
-          <p class="text-3xl font-extrabold mt-2">${c.value}</p>
+        <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+          <p class="text-xs text-gray-400 font-semibold mb-2">${esc(c.label)}</p>
+          <p class="text-4xl font-extrabold ${c.accent ? "text-brand-orange" : "text-brand-navy"}">${c.value}</p>
         </div>`).join("");
 
       const { data } = await supa.from("blog_templum_posts")
-        .select("title,slug,status,published_at").order("published_at", { ascending: false, nullsFirst: false }).limit(6);
+        .select("title,slug,category_name,status,published_at,featured_image")
+        .order("published_at", { ascending: false, nullsFirst: false }).limit(6);
       const rows = document.getElementById("recent");
       rows.innerHTML = (data && data.length) ? data.map((p) => `
-        <tr class="border-t border-gray-100">
-          <td class="px-5 py-3 text-sm"><a href="/acesso/artigos/editar?slug=${encodeURIComponent(p.slug)}" class="font-semibold hover:text-brand-ink">${esc(p.title)}</a></td>
-          <td class="px-5 py-3"><span class="text-[0.7rem] font-bold px-2.5 py-1 rounded-full ${p.status === "published" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}">${p.status === "published" ? "Publicado" : "Rascunho"}</span></td>
-          <td class="px-5 py-3 text-sm text-gray-500">${fmt(p.published_at)}</td>
-        </tr>`).join("") : '<tr><td colspan="3" class="px-5 py-6 text-sm text-gray-400">Nenhum artigo ainda. Importe os posts ou crie um novo.</td></tr>';
+        <tr class="border-t border-gray-100 hover:bg-gray-50/50">
+          <td class="px-6 py-3">
+            <div class="flex items-center gap-3">
+              <span class="w-10 h-10 rounded-lg shrink-0 bg-brand-gradient bg-cover bg-center" style="${p.featured_image ? `background-image:url('${esc(imgUrl(p.featured_image))}')` : ""}"></span>
+              <a href="/acesso/artigos/editar?slug=${encodeURIComponent(p.slug)}" class="font-semibold text-sm hover:text-brand-ink line-clamp-1">${esc(p.title)}</a>
+            </div>
+          </td>
+          <td class="px-6 py-3 text-sm text-gray-500">${esc(p.category_name) || "—"}</td>
+          <td class="px-6 py-3"><span class="text-[0.65rem] font-bold px-2.5 py-1 rounded-full ${p.status === "published" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}">${p.status === "published" ? "PUBLICADO" : "RASCUNHO"}</span></td>
+          <td class="px-6 py-3 text-sm text-gray-500">${fmt(p.published_at)}</td>
+          <td class="px-6 py-3 text-right whitespace-nowrap">
+            <a href="https://certificacaoiso.com.br/${encodeURIComponent(p.slug)}/" target="_blank" rel="noopener" class="inline-grid w-8 h-8 place-items-center rounded-lg text-gray-400 hover:text-brand-ink hover:bg-gray-100"><i data-lucide="eye" class="w-4 h-4"></i></a>
+            <a href="/acesso/artigos/editar?slug=${encodeURIComponent(p.slug)}" class="inline-grid w-8 h-8 place-items-center rounded-lg text-gray-400 hover:text-brand-ink hover:bg-gray-100"><i data-lucide="pencil" class="w-4 h-4"></i></a>
+          </td>
+        </tr>`).join("") : '<tr><td colspan="5" class="px-6 py-8 text-sm text-gray-400">Nenhum artigo ainda.</td></tr>';
       createIcons({ icons });
     }
   </script>

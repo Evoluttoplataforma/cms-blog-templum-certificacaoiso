@@ -2,7 +2,9 @@
 const { title = "Painel", active = "" } = Astro.props;
 const B = "/acesso";
 const nav = [
+  { id: "dashboard", label: "Dashboard", icon: "layout-dashboard", href: `${B}/` },
   { id: "artigos", label: "Artigos", icon: "file-text", href: `${B}/artigos` },
+  { id: "novo", label: "Novo Artigo", icon: "square-pen", href: `${B}/artigos/novo` },
   { id: "iscas", label: "Iscas", icon: "gift", href: `${B}/iscas` },
   { id: "historias", label: "Histórias", icon: "sparkles", href: `${B}/historias` },
   { id: "comentarios", label: "Comentários", icon: "message-square", href: `${B}/comentarios` },

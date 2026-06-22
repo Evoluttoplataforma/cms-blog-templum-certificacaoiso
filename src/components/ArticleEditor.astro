@@ -116,7 +116,7 @@
 </style>
 
 <script>
-  import { supa, requireAuth, uploadMedia, BASE } from "../lib/supa.ts";
+  import { supa, requireAuth, uploadMedia, BASE, imgUrl } from "../lib/supa.ts";
   import { createIcons, icons } from "lucide";
   const s = await requireAuth();
   if (s) {
@@ -148,7 +148,7 @@
     }
     $("cover-up").addEventListener("click", () => pickImage((url) => { $("featured_image").value = url; setCover(url); }));
     $("featured_image").addEventListener("input", (e) => setCover(e.target.value));
-    function setCover(url) { const el = $("cover-preview"); el.style.backgroundImage = url ? `url("${url}")` : ""; el.innerHTML = url ? "" : '<i data-lucide="image" class="w-7 h-7"></i>'; createIcons({ icons }); }
+    function setCover(url) { const el = $("cover-preview"); el.style.backgroundImage = url ? `url("${imgUrl(url)}")` : ""; el.innerHTML = url ? "" : '<i data-lucide="image" class="w-7 h-7"></i>'; createIcons({ icons }); }
 
     // ---- slug auto ----
     $("title").addEventListener("input", (e) => { if (!editingId && !$("slug").dataset.touched) $("slug").value = e.target.value.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""); });

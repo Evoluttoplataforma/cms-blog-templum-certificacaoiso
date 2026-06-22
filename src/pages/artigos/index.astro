@@ -2,59 +2,84 @@
 import CmsLayout from "../../layouts/CmsLayout.astro";
 ---
 <CmsLayout title="Artigos" active="artigos">
-  <a slot="actions" href="/acesso/artigos/novo" class="px-4 py-2 rounded-full bg-brand-ink text-white text-sm font-bold shadow-lg hover:brightness-110 flex items-center gap-1.5">
-    <i data-lucide="plus" class="w-4 h-4"></i> Novo artigo
-  </a>
+  <a slot="actions" href="/acesso/artigos/novo" class="px-4 py-2 rounded-full bg-brand-ink text-white text-sm font-bold shadow-lg hover:brightness-110 flex items-center gap-1.5"><i data-lucide="plus" class="w-4 h-4"></i> Novo artigo</a>
 
-  <div class="mb-4 max-w-sm relative">
-    <i data-lucide="search" class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
-    <input id="q" placeholder="Buscar por título…" class="w-full pl-9 pr-3 py-2.5 rounded-full border border-gray-200 bg-white text-sm focus:outline-none focus:border-brand-orange" />
+  <!-- filtros -->
+  <div class="flex flex-wrap items-center gap-3 mb-4">
+    <div class="flex gap-1 bg-white border border-gray-200 rounded-full p-1" id="tabs">
+      <button data-st="all" class="ftab ftab-on">Todos</button>
+      <button data-st="published" class="ftab">Publicados</button>
+      <button data-st="draft" class="ftab">Rascunhos</button>
+    </div>
+    <select id="catf" class="px-3 py-2 rounded-full border border-gray-200 bg-white text-sm"><option value="">Todas as categorias</option></select>
+    <div class="relative ml-auto">
+      <i data-lucide="search" class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+      <input id="q" placeholder="Buscar título…" class="pl-9 pr-3 py-2 rounded-full border border-gray-200 bg-white text-sm w-64 focus:outline-none focus:border-brand-orange" />
+    </div>
   </div>
 
   <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
     <table class="w-full">
       <thead><tr class="text-[0.65rem] uppercase tracking-widest text-gray-400 border-b border-gray-100">
-        <th class="text-left px-5 py-3 font-semibold">Título</th>
-        <th class="text-left px-5 py-3 font-semibold">Categoria</th>
-        <th class="text-left px-5 py-3 font-semibold">Status</th>
-        <th class="text-left px-5 py-3 font-semibold">Data</th>
-        <th class="px-5 py-3"></th>
+        <th class="text-left px-5 py-3 font-semibold">Título</th><th class="text-left px-5 py-3 font-semibold">Categoria</th>
+        <th class="text-left px-5 py-3 font-semibold">Autor</th><th class="text-left px-5 py-3 font-semibold">Status</th>
+        <th class="text-left px-5 py-3 font-semibold">Data</th><th></th>
       </tr></thead>
-      <tbody id="rows"><tr><td colspan="5" class="px-5 py-8 text-sm text-gray-400">Carregando…</td></tr></tbody>
+      <tbody id="rows"><tr><td colspan="6" class="px-5 py-8 text-sm text-gray-400">Carregando…</td></tr></tbody>
     </table>
   </div>
-  <p id="count" class="text-xs text-gray-400 mt-3"></p>
+  <div class="flex items-center justify-between mt-3">
+    <p id="count" class="text-xs text-gray-400"></p>
+    <div class="flex items-center gap-2" id="pager"></div>
+  </div>
+
+  <style>.ftab{padding:6px 14px;border-radius:999px;font-size:13px;font-weight:700;color:#6b7280}.ftab-on{background:#222831;color:#fff}</style>
 
   <script>
     import { supa, requireAuth, esc } from "../../lib/supa.ts";
     import { createIcons, icons } from "lucide";
     const s = await requireAuth();
     if (s) {
-      const rows = document.getElementById("rows"), countEl = document.getElementById("count");
+      const rows = document.getElementById("rows"), countEl = document.getElementById("count"), pager = document.getElementById("pager");
       const fmt = (d) => d ? new Date(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" }) : "—";
-      let all = [];
-      function render(list) {
-        rows.innerHTML = list.length ? list.map((p) => `
+      let all = [], st = "all", cat = "", q = "", page = 1; const PER = 50;
+
+      // categorias no filtro
+      const { data: cats } = await supa.from("blog_templum_categories").select("name").order("sort_order");
+      const cf = document.getElementById("catf");
+      (cats || []).forEach((c) => { const o = document.createElement("option"); o.value = c.name; o.textContent = c.name; cf.appendChild(o); });
+
+      const { data, error } = await supa.from("blog_templum_posts").select("title,slug,category_name,author_name,status,published_at").order("published_at", { ascending: false, nullsFirst: false }).limit(2000);
+      if (error) { rows.innerHTML = `<tr><td colspan="6" class="px-5 py-8 text-sm text-red-600">${esc(error.message)}</td></tr>`; }
+      else { all = data || []; render(); }
+
+      function filtered() {
+        return all.filter((p) => (st === "all" || p.status === st) && (!cat || p.category_name === cat) && (!q || (p.title || "").toLowerCase().includes(q)));
+      }
+      function render() {
+        const list = filtered(); const pages = Math.max(1, Math.ceil(list.length / PER));
+        if (page > pages) page = pages;
+        const slice = list.slice((page - 1) * PER, page * PER);
+        rows.innerHTML = slice.length ? slice.map((p) => `
           <tr class="border-t border-gray-100 hover:bg-gray-50/50">
             <td class="px-5 py-3 text-sm"><a href="/acesso/artigos/editar?slug=${encodeURIComponent(p.slug)}" class="font-semibold hover:text-brand-ink">${esc(p.title)}</a></td>
             <td class="px-5 py-3 text-sm text-gray-500">${esc(p.category_name) || "—"}</td>
+            <td class="px-5 py-3 text-sm text-gray-500">${esc(p.author_name) || "—"}</td>
             <td class="px-5 py-3"><span class="text-[0.7rem] font-bold px-2.5 py-1 rounded-full ${p.status === "published" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}">${p.status === "published" ? "Publicado" : "Rascunho"}</span></td>
             <td class="px-5 py-3 text-sm text-gray-500">${fmt(p.published_at)}</td>
             <td class="px-5 py-3 text-right whitespace-nowrap">
-              <a href="https://certificacaoiso.com.br/${encodeURIComponent(p.slug)}/" target="_blank" rel="noopener" class="inline-grid w-8 h-8 place-items-center rounded-lg text-gray-400 hover:text-brand-ink hover:bg-gray-100" title="Ver no site"><i data-lucide="external-link" class="w-4 h-4"></i></a>
-              <a href="/acesso/artigos/editar?slug=${encodeURIComponent(p.slug)}" class="inline-grid w-8 h-8 place-items-center rounded-lg text-gray-400 hover:text-brand-ink hover:bg-gray-100" title="Editar"><i data-lucide="pencil" class="w-4 h-4"></i></a>
+              <a href="https://certificacaoiso.com.br/${encodeURIComponent(p.slug)}/" target="_blank" rel="noopener" class="inline-grid w-8 h-8 place-items-center rounded-lg text-gray-400 hover:text-brand-ink hover:bg-gray-100"><i data-lucide="external-link" class="w-4 h-4"></i></a>
+              <a href="/acesso/artigos/editar?slug=${encodeURIComponent(p.slug)}" class="inline-grid w-8 h-8 place-items-center rounded-lg text-gray-400 hover:text-brand-ink hover:bg-gray-100"><i data-lucide="pencil" class="w-4 h-4"></i></a>
             </td>
-          </tr>`).join("") : '<tr><td colspan="5" class="px-5 py-8 text-sm text-gray-400">Nenhum artigo. Clique em “Novo artigo”.</td></tr>';
+          </tr>`).join("") : '<tr><td colspan="6" class="px-5 py-8 text-sm text-gray-400">Nenhum artigo com esses filtros.</td></tr>';
+        countEl.textContent = `${list.length} artigos`;
+        pager.innerHTML = pages > 1 ? `<button ${page <= 1 ? "disabled" : ""} id="prev" class="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-semibold disabled:opacity-40">←</button><span class="text-sm text-gray-500">${page}/${pages}</span><button ${page >= pages ? "disabled" : ""} id="next" class="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-semibold disabled:opacity-40">→</button>` : "";
+        if (pages > 1) { document.getElementById("prev")?.addEventListener("click", () => { page--; render(); }); document.getElementById("next")?.addEventListener("click", () => { page++; render(); }); }
         createIcons({ icons });
       }
-      const { data, error } = await supa.from("blog_templum_posts")
-        .select("title,slug,category_name,status,published_at").order("published_at", { ascending: false, nullsFirst: false }).limit(2000);
-      if (error) { rows.innerHTML = `<tr><td colspan="5" class="px-5 py-8 text-sm text-red-600">${esc(error.message)}</td></tr>`; }
-      else { all = data || []; render(all); countEl.textContent = `${all.length} artigos`; }
-      document.getElementById("q").addEventListener("input", (e) => {
-        const t = e.target.value.toLowerCase();
-        render(all.filter((p) => (p.title || "").toLowerCase().includes(t)));
-      });
+      document.querySelectorAll("#tabs [data-st]").forEach((b) => b.addEventListener("click", () => { st = b.dataset.st; page = 1; document.querySelectorAll("#tabs .ftab").forEach((x) => x.classList.remove("ftab-on")); b.classList.add("ftab-on"); render(); }));
+      cf.addEventListener("change", (e) => { cat = e.target.value; page = 1; render(); });
+      document.getElementById("q").addEventListener("input", (e) => { q = e.target.value.toLowerCase(); page = 1; render(); });
     }
   </script>
 </CmsLayout>

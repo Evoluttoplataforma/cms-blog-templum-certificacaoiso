@@ -2,93 +2,117 @@
 // Editor de artigo (usado por /artigos/novo e /artigos/editar?slug=...).
 // Conteúdo rico = HTML (contenteditable). Salva em blog_templum_posts.
 ---
-<div class="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-6 items-start">
+<div class="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-6 items-start">
   <!-- COLUNA PRINCIPAL -->
   <div class="space-y-4">
     <input id="title" placeholder="Título do artigo"
-      class="w-full text-2xl font-extrabold bg-transparent border-0 focus:outline-none placeholder-gray-300" />
+      class="w-full text-3xl font-extrabold bg-transparent border-0 focus:outline-none placeholder-gray-300 leading-tight" />
 
     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm">
-      <!-- toolbar -->
-      <div class="flex flex-wrap items-center gap-1 px-3 py-2 border-b border-gray-100">
-        <button type="button" data-cmd="formatBlock" data-val="h2" class="tb" title="Título 2"><i data-lucide="heading-2" class="w-4 h-4"></i></button>
-        <button type="button" data-cmd="formatBlock" data-val="h3" class="tb" title="Título 3"><i data-lucide="heading-3" class="w-4 h-4"></i></button>
-        <span class="w-px h-5 bg-gray-200 mx-1"></span>
+      <div class="flex flex-wrap items-center gap-0.5 px-3 py-2 border-b border-gray-100 sticky top-[68px] bg-white z-10 rounded-t-2xl">
+        <button type="button" data-block="p" class="tb" title="Parágrafo"><i data-lucide="type" class="w-4 h-4"></i></button>
+        <button type="button" data-block="h2" class="tb" title="Título 2"><i data-lucide="heading-2" class="w-4 h-4"></i></button>
+        <button type="button" data-block="h3" class="tb" title="Título 3"><i data-lucide="heading-3" class="w-4 h-4"></i></button>
+        <span class="tbsep"></span>
         <button type="button" data-cmd="bold" class="tb" title="Negrito"><i data-lucide="bold" class="w-4 h-4"></i></button>
         <button type="button" data-cmd="italic" class="tb" title="Itálico"><i data-lucide="italic" class="w-4 h-4"></i></button>
+        <button type="button" data-cmd="underline" class="tb" title="Sublinhado"><i data-lucide="underline" class="w-4 h-4"></i></button>
+        <span class="tbsep"></span>
         <button type="button" data-cmd="insertUnorderedList" class="tb" title="Lista"><i data-lucide="list" class="w-4 h-4"></i></button>
-        <span class="w-px h-5 bg-gray-200 mx-1"></span>
+        <button type="button" data-cmd="insertOrderedList" class="tb" title="Lista numerada"><i data-lucide="list-ordered" class="w-4 h-4"></i></button>
+        <button type="button" data-block="blockquote" class="tb" title="Citação"><i data-lucide="quote" class="w-4 h-4"></i></button>
+        <span class="tbsep"></span>
         <button type="button" id="tb-link" class="tb" title="Link"><i data-lucide="link" class="w-4 h-4"></i></button>
         <button type="button" id="tb-img" class="tb" title="Imagem"><i data-lucide="image" class="w-4 h-4"></i></button>
+        <span class="tbsep"></span>
+        <button type="button" data-cmd="undo" class="tb" title="Desfazer"><i data-lucide="undo-2" class="w-4 h-4"></i></button>
+        <button type="button" data-cmd="redo" class="tb" title="Refazer"><i data-lucide="redo-2" class="w-4 h-4"></i></button>
+        <button type="button" id="tb-clear" class="tb ml-auto text-gray-400" title="Limpar formatação"><i data-lucide="eraser" class="w-4 h-4"></i></button>
       </div>
-      <!-- editor -->
-      <div id="editor" contenteditable="true"
-        class="prose max-w-none px-6 py-5 min-h-[420px] focus:outline-none text-[15px] leading-relaxed"></div>
+      <div id="editor" contenteditable="true" class="ed px-7 py-6 min-h-[460px] focus:outline-none"></div>
     </div>
   </div>
 
   <!-- SIDEBAR -->
   <div class="space-y-4">
+    <!-- Publicação -->
     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-3">
+      <div class="flex items-center justify-between">
+        <span class="text-[0.65rem] uppercase tracking-widest text-gray-400 font-bold">Publicação</span>
+        <span id="st-badge" class="text-[0.65rem] font-bold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">—</span>
+      </div>
       <div class="flex gap-2">
         <button id="save" class="flex-1 py-2.5 rounded-full border border-gray-300 text-sm font-bold hover:bg-gray-50">Salvar rascunho</button>
         <button id="publish" class="flex-1 py-2.5 rounded-full bg-brand-ink text-white text-sm font-bold shadow-lg hover:brightness-110">Publicar</button>
       </div>
-      <p id="msg" class="text-xs text-gray-500"></p>
-      <div class="flex items-center justify-between text-xs text-gray-400 pt-1">
-        <span id="wc">0 palavras</span><span id="rt">0 min de leitura</span>
+      <div id="edit-actions" class="hidden items-center gap-3 pt-1">
+        <a id="view-site" href="#" target="_blank" rel="noopener" class="text-xs font-semibold text-brand-ink flex items-center gap-1"><i data-lucide="external-link" class="w-3.5 h-3.5"></i> Ver no site</a>
+        <button id="del" class="text-xs font-semibold text-red-600 flex items-center gap-1 ml-auto"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Excluir</button>
+      </div>
+      <p id="msg" class="text-xs text-gray-500 min-h-[16px]"></p>
+      <div class="flex items-center justify-between text-xs text-gray-400 border-t border-gray-100 pt-2">
+        <span id="wc">0 palavras</span><span id="rt">0 min</span>
       </div>
     </div>
 
+    <!-- Organização -->
     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-3">
-      <div>
-        <label class="lb">Slug (URL)</label>
-        <input id="slug" class="inp" placeholder="meu-artigo" />
-      </div>
-      <div>
-        <label class="lb">Categoria</label>
-        <input id="category_name" class="inp" placeholder="Qualidade e Inovação" />
-      </div>
-      <div>
-        <label class="lb">Autor</label>
-        <input id="author_name" class="inp" placeholder="Equipe Templum" />
-      </div>
-      <div>
-        <label class="lb">Capa</label>
-        <div id="cover-preview" class="aspect-[16/9] rounded-lg bg-gray-100 mb-2 bg-cover bg-center"></div>
-        <div class="flex gap-2">
-          <input id="featured_image" class="inp flex-1" placeholder="URL ou enviar →" />
-          <button id="cover-up" class="px-3 rounded-lg border border-gray-300 text-sm font-semibold hover:bg-gray-50"><i data-lucide="upload" class="w-4 h-4"></i></button>
-        </div>
+      <span class="text-[0.65rem] uppercase tracking-widest text-gray-400 font-bold">Organização</span>
+      <div><label class="lb">Slug (URL)</label><input id="slug" class="inp" placeholder="meu-artigo" /></div>
+      <div><label class="lb">Categoria</label><select id="category_name" class="inp"><option value="">— selecione —</option></select></div>
+      <div><label class="lb">Autor</label><input id="author_name" class="inp" placeholder="Equipe Templum" /></div>
+      <div><label class="lb">Data de publicação</label><input id="published_at" type="datetime-local" class="inp" /></div>
+      <div><label class="lb">Tags (separadas por vírgula)</label><input id="tags" class="inp" placeholder="iso 9001, qualidade" /></div>
+    </div>
+
+    <!-- Capa -->
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-2">
+      <span class="text-[0.65rem] uppercase tracking-widest text-gray-400 font-bold">Capa</span>
+      <div id="cover-preview" class="aspect-[16/9] rounded-lg bg-gray-100 bg-cover bg-center grid place-items-center text-gray-300"><i data-lucide="image" class="w-7 h-7"></i></div>
+      <div class="flex gap-2">
+        <input id="featured_image" class="inp flex-1" placeholder="URL ou enviar →" />
+        <button id="cover-up" class="px-3 rounded-lg border border-gray-300 hover:bg-gray-50"><i data-lucide="upload" class="w-4 h-4"></i></button>
       </div>
     </div>
 
+    <!-- SEO & IA -->
     <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-3">
-      <p class="text-[0.65rem] uppercase tracking-widest text-gray-400 font-bold">SEO / IA</p>
-      <div>
-        <label class="lb">Resposta rápida (TL;DR)</label>
-        <textarea id="tldr" rows="3" class="inp"></textarea>
+      <span class="text-[0.65rem] uppercase tracking-widest text-gray-400 font-bold">SEO & IA</span>
+      <div><label class="lb">Resposta rápida (TL;DR)</label><textarea id="tldr" rows="3" class="inp" placeholder="2-3 frases respondendo direto (IA/SEO)"></textarea></div>
+      <div><label class="lb flex justify-between">Meta descrição <span id="md-count" class="text-gray-400 font-normal">0/160</span></label><textarea id="seo_description" rows="2" class="inp" maxlength="200"></textarea></div>
+      <div><label class="lb">SEO title</label><input id="seo_title" class="inp" /></div>
+      <div><label class="lb">Imagem social (OG)</label><input id="og_image" class="inp" placeholder="URL" /></div>
+    </div>
+
+    <!-- FAQ -->
+    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-3">
+      <div class="flex items-center justify-between">
+        <span class="text-[0.65rem] uppercase tracking-widest text-gray-400 font-bold">FAQ (sanfoninhas no Google)</span>
+        <button id="faq-add" class="text-xs font-bold text-brand-ink flex items-center gap-1"><i data-lucide="plus" class="w-3.5 h-3.5"></i> Pergunta</button>
       </div>
-      <div>
-        <label class="lb">Meta descrição <span id="md-count" class="text-gray-400 font-normal">0/160</span></label>
-        <textarea id="seo_description" rows="2" class="inp" maxlength="200"></textarea>
-      </div>
+      <div id="faq-list" class="space-y-3"></div>
     </div>
   </div>
 </div>
 
 <style>
-  .tb { padding: 6px; border-radius: 8px; color: #4b5563; }
-  .tb:hover { background: #f3f4f6; }
+  .tb { padding:7px; border-radius:8px; color:#4b5563; display:inline-flex; }
+  .tb:hover { background:#f3f4f6; color:#111827; }
+  .tbsep { width:1px; height:20px; background:#e5e7eb; margin:0 4px; display:inline-block; }
   .lb { display:block; font-size:12px; font-weight:700; color:#374151; margin-bottom:4px; }
-  .inp { width:100%; padding:8px 10px; border:1px solid #e5e7eb; border-radius:8px; font-size:14px; }
-  .inp:focus { outline:none; border-color:#FF5925; }
-  #editor h2 { font-size:1.4rem; font-weight:800; margin:1rem 0 .5rem; }
-  #editor h3 { font-size:1.15rem; font-weight:800; margin:.9rem 0 .4rem; }
-  #editor ul { list-style:disc; padding-left:1.4rem; margin:.5rem 0; }
-  #editor a { color:#B23C0C; text-decoration:underline; }
-  #editor img { max-width:100%; border-radius:8px; margin:.6rem 0; }
-  #editor:empty:before { content:"Escreva o conteúdo do artigo…"; color:#9ca3af; }
+  .inp { width:100%; padding:9px 11px; border:1px solid #e5e7eb; border-radius:9px; font-size:14px; background:#fff; }
+  .inp:focus { outline:none; border-color:#FF5925; box-shadow:0 0 0 3px rgba(255,89,37,.12); }
+  .ed { font-size:16px; line-height:1.75; color:#1f2937; }
+  .ed h2 { font-size:1.5rem; font-weight:800; margin:1.4rem 0 .6rem; color:#111827; }
+  .ed h3 { font-size:1.2rem; font-weight:800; margin:1.1rem 0 .5rem; color:#111827; }
+  .ed p { margin:.6rem 0; }
+  .ed ul { list-style:disc; padding-left:1.5rem; margin:.6rem 0; }
+  .ed ol { list-style:decimal; padding-left:1.5rem; margin:.6rem 0; }
+  .ed blockquote { border-left:3px solid #FF5925; padding-left:1rem; margin:1rem 0; color:#6b7280; font-style:italic; }
+  .ed a { color:#B23C0C; text-decoration:underline; }
+  .ed img { max-width:100%; border-radius:10px; margin:.8rem 0; }
+  .ed:empty:before { content:"Escreva o conteúdo do artigo… (cole de qualquer lugar, a formatação é limpa)"; color:#9ca3af; }
+  .faq-row { border:1px solid #e5e7eb; border-radius:10px; padding:10px; }
 </style>
 
 <script>
@@ -101,91 +125,111 @@
     const slug0 = new URLSearchParams(location.search).get("slug");
     let editingId = null;
 
-    // toolbar execCommand
-    document.querySelectorAll("[data-cmd]").forEach((b) => b.addEventListener("click", () => {
-      const cmd = b.getAttribute("data-cmd"), val = b.getAttribute("data-val");
-      editor.focus(); document.execCommand(cmd, false, val ? `<${val}>` : undefined); updateCounts();
-    }));
+    // ---- toolbar ----
+    document.querySelectorAll("[data-cmd]").forEach((b) => b.addEventListener("click", () => { editor.focus(); document.execCommand(b.dataset.cmd, false); updateCounts(); }));
+    document.querySelectorAll("[data-block]").forEach((b) => b.addEventListener("click", () => { editor.focus(); document.execCommand("formatBlock", false, `<${b.dataset.block}>`); updateCounts(); }));
     $("tb-link").addEventListener("click", () => { const u = prompt("URL do link:"); if (u) { editor.focus(); document.execCommand("createLink", false, u); } });
     $("tb-img").addEventListener("click", () => pickImage((url) => { editor.focus(); document.execCommand("insertImage", false, url); }));
+    $("tb-clear").addEventListener("click", () => { editor.focus(); document.execCommand("removeFormat"); document.execCommand("formatBlock", false, "<p>"); });
+    // paste limpo (texto, mantendo quebras de parágrafo)
+    editor.addEventListener("paste", (e) => {
+      e.preventDefault();
+      const t = (e.clipboardData || window.clipboardData).getData("text/plain");
+      const html = t.split(/\n{2,}/).map((p) => `<p>${p.replace(/\n/g, "<br>").replace(/</g, "&lt;")}</p>`).join("");
+      document.execCommand("insertHTML", false, html); updateCounts();
+    });
 
-    // upload helper
     function pickImage(cb) {
       const inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/*";
-      inp.onchange = async () => {
-        if (!inp.files?.[0]) return; msg.textContent = "Enviando imagem…";
+      inp.onchange = async () => { if (!inp.files?.[0]) return; msg.textContent = "Enviando imagem…";
         try { const url = await uploadMedia(inp.files[0], "artigos"); cb(url); msg.textContent = ""; }
-        catch (e) { msg.textContent = "Erro no upload (bucket 'media' existe?): " + e.message; }
-      };
+        catch (e) { msg.textContent = "Erro no upload (bucket 'media'?): " + e.message; } };
       inp.click();
     }
     $("cover-up").addEventListener("click", () => pickImage((url) => { $("featured_image").value = url; setCover(url); }));
     $("featured_image").addEventListener("input", (e) => setCover(e.target.value));
-    function setCover(url) { $("cover-preview").style.backgroundImage = url ? `url("${url}")` : ""; }
+    function setCover(url) { const el = $("cover-preview"); el.style.backgroundImage = url ? `url("${url}")` : ""; el.innerHTML = url ? "" : '<i data-lucide="image" class="w-7 h-7"></i>'; createIcons({ icons }); }
 
-    // auto-slug (só em novo)
-    $("title").addEventListener("input", (e) => {
-      if (!editingId && !$("slug").dataset.touched) $("slug").value = e.target.value.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-    });
+    // ---- slug auto ----
+    $("title").addEventListener("input", (e) => { if (!editingId && !$("slug").dataset.touched) $("slug").value = e.target.value.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""); });
     $("slug").addEventListener("input", () => { $("slug").dataset.touched = "1"; });
 
-    // contadores
-    function updateCounts() {
-      const txt = editor.innerText.trim();
-      const w = txt ? txt.split(/\s+/).length : 0;
-      $("wc").textContent = w + " palavras"; $("rt").textContent = Math.max(1, Math.round(w / 200)) + " min de leitura";
-    }
+    // ---- contadores ----
+    function updateCounts() { const txt = editor.innerText.trim(); const w = txt ? txt.split(/\s+/).length : 0; $("wc").textContent = w + " palavras"; $("rt").textContent = Math.max(1, Math.round(w / 200)) + " min"; }
     editor.addEventListener("input", updateCounts);
     $("seo_description").addEventListener("input", (e) => $("md-count").textContent = e.target.value.length + "/160");
 
-    // carrega (edição)
+    // ---- FAQ builder ----
+    function faqRow(q = "", a = "") {
+      const div = document.createElement("div"); div.className = "faq-row space-y-2";
+      div.innerHTML = `<div class="flex gap-2"><input class="inp faq-q" placeholder="Pergunta" /><button type="button" class="faq-del text-gray-400 hover:text-red-600 shrink-0"><i data-lucide="x" class="w-4 h-4"></i></button></div><textarea class="inp faq-a" rows="2" placeholder="Resposta"></textarea>`;
+      div.querySelector(".faq-q").value = q; div.querySelector(".faq-a").value = a;
+      div.querySelector(".faq-del").addEventListener("click", () => div.remove());
+      $("faq-list").appendChild(div); createIcons({ icons });
+    }
+    $("faq-add").addEventListener("click", () => faqRow());
+    function collectFaq() { return [...document.querySelectorAll(".faq-row")].map((r) => ({ pergunta: r.querySelector(".faq-q").value.trim(), resposta: r.querySelector(".faq-a").value.trim() })).filter((f) => f.pergunta); }
+
+    function setStatus(st) { const b = $("st-badge"); b.textContent = st === "published" ? "Publicado" : "Rascunho"; b.className = "text-[0.65rem] font-bold px-2.5 py-1 rounded-full " + (st === "published" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"); }
+
+    // ---- categorias ----
+    const { data: cats } = await supa.from("blog_templum_categories").select("name,slug").order("sort_order");
+    const sel = $("category_name");
+    (cats || []).forEach((c) => { const o = document.createElement("option"); o.value = c.name; o.textContent = c.name; sel.appendChild(o); });
+
+    // ---- carrega (edição) ----
     if (slug0) {
       const { data, error } = await supa.from("blog_templum_posts").select("*").eq("slug", slug0).single();
       if (error) msg.textContent = error.message;
       else if (data) {
         editingId = data.id;
         $("title").value = data.title || ""; $("slug").value = data.slug || ""; $("slug").dataset.touched = "1";
-        $("category_name").value = data.category_name || ""; $("author_name").value = data.author_name || "";
+        if (data.category_name && ![...sel.options].some((o) => o.value === data.category_name)) { const o = document.createElement("option"); o.value = data.category_name; o.textContent = data.category_name; sel.appendChild(o); }
+        sel.value = data.category_name || ""; $("author_name").value = data.author_name || "";
         $("featured_image").value = data.featured_image || ""; setCover(data.featured_image);
-        $("tldr").value = data.tldr || ""; $("seo_description").value = data.seo_description || "";
+        $("tldr").value = data.tldr || ""; $("seo_description").value = data.seo_description || ""; $("seo_title").value = data.seo_title || ""; $("og_image").value = data.og_image || "";
+        $("tags").value = (data.tags || []).join(", ");
+        if (data.published_at) $("published_at").value = new Date(data.published_at).toISOString().slice(0, 16);
         editor.innerHTML = data.content || ""; updateCounts();
         $("md-count").textContent = ($("seo_description").value.length) + "/160";
+        (data.faq || []).forEach((f) => faqRow(f.pergunta, f.resposta));
+        setStatus(data.status); $("edit-actions").classList.remove("hidden"); $("edit-actions").classList.add("flex");
+        $("view-site").href = `https://certificacaoiso.com.br/${data.slug}/`;
       }
-    }
+    } else setStatus("draft");
 
+    // ---- salvar ----
     async function persist(status) {
       const title = $("title").value.trim(), slug = $("slug").value.trim();
       if (!title || !slug) { msg.textContent = "Título e slug são obrigatórios."; return; }
       const txt = editor.innerText.trim(); const wc = txt ? txt.split(/\s+/).length : 0;
       const row = {
-        title, slug, content: editor.innerHTML,
-        excerpt: $("seo_description").value || null,
-        tldr: $("tldr").value || null,
-        category_name: $("category_name").value || null,
-        author_name: $("author_name").value || "Equipe Templum",
-        featured_image: $("featured_image").value || null,
-        seo_description: $("seo_description").value || null,
-        reading_time_min: Math.max(1, Math.round(wc / 200)),
-        status,
+        title, slug, content: editor.innerHTML, excerpt: $("seo_description").value || null,
+        tldr: $("tldr").value || null, faq: collectFaq(),
+        category_name: sel.value || null, author_name: $("author_name").value || "Equipe Templum",
+        featured_image: $("featured_image").value || null, og_image: $("og_image").value || null,
+        seo_title: $("seo_title").value || null, seo_description: $("seo_description").value || null,
+        tags: $("tags").value.split(",").map((t) => t.trim()).filter(Boolean),
+        reading_time_min: Math.max(1, Math.round(wc / 200)), status,
+        published_at: $("published_at").value ? new Date($("published_at").value).toISOString() : (status === "published" ? new Date().toISOString() : null),
       };
-      if (status === "published") row.published_at = new Date().toISOString();
       msg.textContent = "Salvando…";
       let res;
       if (editingId) res = await supa.from("blog_templum_posts").update(row).eq("id", editingId).select().single();
       else res = await supa.from("blog_templum_posts").insert(row).select().single();
       if (res.error) { msg.textContent = "Erro: " + res.error.message; return; }
-      editingId = res.data.id;
+      editingId = res.data.id; setStatus(status);
+      $("edit-actions").classList.remove("hidden"); $("edit-actions").classList.add("flex"); $("view-site").href = `https://certificacaoiso.com.br/${slug}/`;
       if (!slug0) history.replaceState(null, "", `${BASE}/artigos/editar?slug=${encodeURIComponent(slug)}`);
       if (status === "published") {
-        msg.textContent = "Publicado ✓ — disparando rebuild do site…";
+        msg.textContent = "Publicado ✓ — disparando rebuild…";
         const { error } = await supa.functions.invoke("rebuild");
-        msg.textContent = error ? "Publicado ✓ (rebuild manual: a função 'rebuild' já está no ar?)" : "Publicado ✓ — o site reconstrói em ~2 min.";
-      } else {
-        msg.textContent = "Rascunho salvo ✓";
-      }
+        msg.textContent = error ? "Publicado ✓ (rebuild: função 'rebuild' no ar?)" : "Publicado ✓ — site reconstrói em ~2 min.";
+      } else msg.textContent = "Rascunho salvo ✓";
     }
     $("save").addEventListener("click", () => persist("draft"));
     $("publish").addEventListener("click", () => persist("published"));
+    $("del").addEventListener("click", async () => { if (editingId && confirm("Excluir este artigo?")) { await supa.from("blog_templum_posts").delete().eq("id", editingId); location.href = BASE + "/artigos"; } });
     createIcons({ icons });
   }
 </script>

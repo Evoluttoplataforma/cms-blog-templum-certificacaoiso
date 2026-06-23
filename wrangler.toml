@@ -8,11 +8,9 @@ directory = "./dist"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
 
-# Rota: liga o /acesso/* deste Worker ao domínio. /acesso* é mais específico que o
-# /* do blog → tem precedência para esses paths.
-routes = [
-  { pattern = "certificacaoiso.com.br/acesso*", zone_name = "certificacaoiso.com.br" }
-]
+# Rota /acesso*: ADICIONAR NO PAINEL (Worker → Settings → Domains & Routes → Route),
+# NÃO aqui — o deploy usa `wrangler versions upload`, que não aplica `routes` do toml.
+#   Route: certificacaoiso.com.br/acesso*  ·  Zone: certificacaoiso.com.br
 
 # Variables no painel (Plaintext, públicas) — opcional, já há fallback no código:
 #   PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY

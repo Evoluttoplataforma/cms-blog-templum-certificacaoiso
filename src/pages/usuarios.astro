@@ -16,9 +16,10 @@ import CmsLayout from "../layouts/CmsLayout.astro";
   <dialog id="dlg" class="rounded-2xl p-0 w-full max-w-md backdrop:bg-black/40">
     <form id="form" class="p-6 space-y-3">
       <h3 class="font-extrabold text-lg">Novo colaborador</h3>
-      <p class="text-xs text-gray-500">Cria o acesso (Supabase Auth) e envia o convite por e-mail.</p>
+      <p class="text-xs text-gray-500">Cria o acesso na hora. Passe o e-mail + senha pro colaborador.</p>
       <div><label class="lb">Nome</label><input id="full_name" class="inp" /></div>
       <div><label class="lb">E-mail</label><input id="email" type="email" class="inp" required /></div>
+      <div><label class="lb">Senha inicial (mín. 6)</label><input id="password" type="text" class="inp" minlength="6" placeholder="ex.: Templum2026" required /></div>
       <div><label class="lb">Papel</label><select id="role" class="inp"><option value="editor">Editor</option><option value="admin">Admin</option></select></div>
       <p id="msg" class="text-xs text-gray-500"></p>
       <div class="flex gap-2 justify-end pt-2"><button type="button" id="cancel" class="px-4 py-2 rounded-full border border-gray-300 text-sm font-bold">Cancelar</button><button type="submit" class="px-4 py-2 rounded-full bg-brand-ink text-white text-sm font-bold">Convidar</button></div>
@@ -50,11 +51,11 @@ import CmsLayout from "../layouts/CmsLayout.astro";
       document.getElementById("new").addEventListener("click", () => { form.reset(); $("msg").textContent = ""; dlg.showModal(); });
       document.getElementById("cancel").addEventListener("click", () => dlg.close());
       form.addEventListener("submit", async (e) => {
-        e.preventDefault(); $("msg").textContent = "Convidando…";
-        const body = { full_name: $("full_name").value, email: $("email").value, role: $("role").value };
-        // Edge Function create-user (Fase 4) — usa service_role p/ criar no Auth
-        const { error } = await supa.functions.invoke("create-user", { body });
-        if (error) $("msg").textContent = "Erro (a Edge Function 'create-user' já está no ar?): " + error.message;
+        e.preventDefault(); $("msg").textContent = "Criando…";
+        const body = { full_name: $("full_name").value, email: $("email").value, password: $("password").value, role: $("role").value };
+        // Edge Function create-user (service_role) — cria direto no Auth com senha
+        const { data, error } = await supa.functions.invoke("create-user", { body });
+        if (error || data?.error) $("msg").textContent = "Erro: " + (data?.error || error.message);
         else { dlg.close(); load(); }
       });
       load();

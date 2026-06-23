@@ -2,7 +2,10 @@
 import CmsLayout from "../layouts/CmsLayout.astro";
 ---
 <CmsLayout title="Iscas" active="iscas">
-  <button slot="actions" id="new" class="px-4 py-2 rounded-full bg-brand-ink text-white text-sm font-bold shadow-lg hover:brightness-110 flex items-center gap-1.5"><i data-lucide="plus" class="w-4 h-4"></i> Nova isca</button>
+  <div slot="actions" class="flex items-center gap-2">
+    <button id="republish" class="px-3 py-2 rounded-full border border-gray-300 text-sm font-bold text-brand-navy hover:bg-gray-50 flex items-center gap-1.5"><i data-lucide="refresh-cw" class="w-4 h-4"></i> Republicar site</button>
+    <button id="new" class="px-4 py-2 rounded-full bg-brand-ink text-white text-sm font-bold shadow-lg hover:brightness-110 flex items-center gap-1.5"><i data-lucide="plus" class="w-4 h-4"></i> Nova isca</button>
+  </div>
 
   <div class="mb-4 max-w-xs relative">
     <i data-lucide="search" class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
@@ -15,44 +18,111 @@ import CmsLayout from "../layouts/CmsLayout.astro";
         <th class="text-left px-5 py-3 font-semibold">Título</th>
         <th class="text-left px-5 py-3 font-semibold">Tipo</th>
         <th class="text-left px-5 py-3 font-semibold">Segmento</th>
+        <th class="text-left px-5 py-3 font-semibold">Conteúdo</th>
         <th class="text-left px-5 py-3 font-semibold">Ativa</th><th></th>
       </tr></thead>
-      <tbody id="rows"><tr><td colspan="5" class="px-5 py-8 text-sm text-gray-400">Carregando…</td></tr></tbody>
+      <tbody id="rows"><tr><td colspan="6" class="px-5 py-8 text-sm text-gray-400">Carregando…</td></tr></tbody>
     </table>
   </div>
   <p id="count" class="text-xs text-gray-400 mt-3"></p>
 
-  <dialog id="dlg" class="rounded-2xl p-0 w-full max-w-lg backdrop:bg-black/40">
-    <form id="form" class="p-6 space-y-3">
-      <h3 class="font-extrabold text-lg" id="dlg-title">Nova isca</h3>
-      <input type="hidden" id="id" />
-      <div><label class="lb">Título</label><input id="title" class="inp" required /></div>
-      <div class="grid grid-cols-2 gap-3">
-        <div><label class="lb">Slug (URL)</label><input id="slug" class="inp" placeholder="meu-material" /></div>
-        <div><label class="lb">Tipo</label><select id="type" class="inp"><option value="ebook">E-book</option><option value="planilha">Planilha</option><option value="webinar">Webinar</option><option value="checklist">Checklist</option></select></div>
+  <dialog id="dlg" class="rounded-2xl p-0 w-full max-w-3xl backdrop:bg-black/40">
+    <form id="form" class="flex flex-col max-h-[90vh]">
+      <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white z-10">
+        <h3 class="font-extrabold text-lg" id="dlg-title">Nova isca</h3>
+        <button type="button" id="cancel-x" class="text-gray-400 hover:text-gray-700"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
-      <div class="grid grid-cols-2 gap-3">
-        <div><label class="lb">Segmento</label><select id="segment" class="inp"><option value="">— selecione —</option></select></div>
-        <div><label class="lb">CTA</label><input id="cta" class="inp" placeholder="Baixar agora" /></div>
+
+      <div class="p-6 space-y-6 overflow-y-auto">
+        <input type="hidden" id="id" />
+
+        <!-- BÁSICO -->
+        <section class="space-y-3">
+          <h4 class="sec">Básico</h4>
+          <div><label class="lb">Título</label><input id="title" class="inp" required /></div>
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="lb">Slug (URL) — /presentes/<span id="slug-prev" class="text-gray-400"></span></label><input id="slug" class="inp" placeholder="meu-material" /></div>
+            <div><label class="lb">Tipo</label><select id="type" class="inp"><option value="ebook">E-book</option><option value="planilha">Planilha</option><option value="webinar">Webinar</option><option value="checklist">Checklist</option></select></div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="lb">Segmento</label><select id="segment" class="inp"><option value="">— selecione —</option></select></div>
+            <div><label class="lb">Texto do botão (CTA)</label><input id="cta" class="inp" placeholder="Quero o e-book" /></div>
+          </div>
+          <div><label class="lb">Arquivo / link de download</label><input id="file_url" class="inp" placeholder="https://…" /></div>
+          <div>
+            <label class="lb">Imagem (capa / OG)</label>
+            <div class="flex gap-2">
+              <input id="image_url" class="inp flex-1" placeholder="URL ou enviar →" />
+              <button type="button" id="img-up" class="px-3 rounded-lg border border-gray-300 hover:bg-gray-50"><i data-lucide="upload" class="w-4 h-4"></i></button>
+            </div>
+          </div>
+          <div><label class="lb">Descrição (meta / lista)</label><textarea id="description" rows="2" class="inp"></textarea></div>
+          <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="active" checked /> Ativa</label>
+        </section>
+
+        <!-- TOPO DA LANDING -->
+        <section class="space-y-3">
+          <h4 class="sec">Topo da landing</h4>
+          <div><label class="lb">Headline <span class="hint">use &lt;em&gt;palavra&lt;/em&gt; p/ laranja e &lt;br&gt; p/ quebra</span></label><textarea id="headline" rows="2" class="inp" placeholder="OKR que &lt;em&gt;funciona&lt;/em&gt;,&lt;br&gt;não OKR que vira mais um &lt;em&gt;quadro&lt;/em&gt;."></textarea></div>
+          <div><label class="lb">Subhead</label><textarea id="subhead" rows="2" class="inp"></textarea></div>
+          <div>
+            <label class="lb">Benefícios <span class="hint">&lt;strong&gt; permitido</span></label>
+            <div id="benefits" class="space-y-2"></div>
+            <button type="button" data-add="benefits" class="addbtn"><i data-lucide="plus" class="w-3.5 h-3.5"></i> Benefício</button>
+          </div>
+        </section>
+
+        <!-- DENTRO DO MATERIAL -->
+        <section class="space-y-3">
+          <h4 class="sec">Dentro do material (passos)</h4>
+          <div id="steps" class="space-y-2"></div>
+          <button type="button" data-add="step" class="addbtn"><i data-lucide="plus" class="w-3.5 h-3.5"></i> Passo</button>
+        </section>
+
+        <!-- CTA INTERMEDIÁRIO -->
+        <section class="space-y-3">
+          <h4 class="sec">CTA intermediário</h4>
+          <div><label class="lb">Título do CTA <span class="hint">&lt;em&gt;/&lt;br&gt; permitidos</span></label><textarea id="cta_title" rows="2" class="inp"></textarea></div>
+          <div><label class="lb">Texto do CTA</label><textarea id="cta_copy" rows="2" class="inp"></textarea></div>
+          <div>
+            <label class="lb">Itens do CTA</label>
+            <div id="cta_items" class="space-y-2"></div>
+            <button type="button" data-add="cta_items" class="addbtn"><i data-lucide="plus" class="w-3.5 h-3.5"></i> Item</button>
+          </div>
+        </section>
+
+        <!-- FAQ -->
+        <section class="space-y-3">
+          <h4 class="sec">FAQ</h4>
+          <div id="faq" class="space-y-2"></div>
+          <button type="button" data-add="faq" class="addbtn"><i data-lucide="plus" class="w-3.5 h-3.5"></i> Pergunta</button>
+        </section>
       </div>
-      <div><label class="lb">Arquivo / link de download</label><input id="file_url" class="inp" placeholder="https://…" /></div>
-      <div>
-        <label class="lb">Imagem (capa)</label>
+
+      <div class="px-6 py-4 border-t border-gray-100 flex items-center justify-between gap-2 sticky bottom-0 bg-white">
+        <p id="msg" class="text-xs text-gray-500"></p>
         <div class="flex gap-2">
-          <input id="image_url" class="inp flex-1" placeholder="URL ou enviar →" />
-          <button type="button" id="img-up" class="px-3 rounded-lg border border-gray-300 hover:bg-gray-50"><i data-lucide="upload" class="w-4 h-4"></i></button>
+          <button type="button" id="cancel" class="px-4 py-2 rounded-full border border-gray-300 text-sm font-bold">Cancelar</button>
+          <button type="submit" class="px-4 py-2 rounded-full bg-brand-ink text-white text-sm font-bold">Salvar</button>
         </div>
-      </div>
-      <div><label class="lb">Descrição</label><textarea id="description" rows="2" class="inp"></textarea></div>
-      <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="active" checked /> Ativa</label>
-      <p id="msg" class="text-xs text-gray-500"></p>
-      <div class="flex gap-2 justify-end pt-2">
-        <button type="button" id="cancel" class="px-4 py-2 rounded-full border border-gray-300 text-sm font-bold">Cancelar</button>
-        <button type="submit" class="px-4 py-2 rounded-full bg-brand-ink text-white text-sm font-bold">Salvar</button>
       </div>
     </form>
   </dialog>
-  <style>.lb{display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:4px}.inp{width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;background:#fff}.inp:focus{outline:none;border-color:#FF5925}</style>
+
+  <style>
+    .lb{display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:4px}
+    .hint{font-weight:500;color:#9ca3af;font-size:11px}
+    .sec{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#FF5925;border-bottom:1px solid #f3f4f6;padding-bottom:6px}
+    .inp{width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;background:#fff;font-family:inherit}
+    .inp:focus{outline:none;border-color:#FF5925}
+    .addbtn{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:#B23C0C;margin-top:6px}
+    .addbtn:hover{text-decoration:underline}
+    .rep-row{display:flex;gap:8px;align-items:flex-start}
+    .rep-step{display:grid;grid-template-columns:64px 1fr 1.4fr 32px;gap:8px}
+    .rep-faq{display:grid;grid-template-columns:1fr 32px;gap:8px}
+    .rep-x{width:32px;height:36px;display:grid;place-items:center;border:1px solid #e5e7eb;border-radius:8px;color:#9ca3af;flex:none}
+    .rep-x:hover{color:#dc2626;border-color:#fecaca}
+  </style>
 
   <script>
     import { supa, requireAuth, esc, uploadMedia } from "../lib/supa.ts";
@@ -67,53 +137,119 @@ import CmsLayout from "../layouts/CmsLayout.astro";
 
       // categorias p/ o segmento
       const { data: cats } = await supa.from("blog_templum_categories").select("name").order("sort_order");
-      const segSel = $("segment");
-      (cats || []).forEach((c) => { const o = document.createElement("option"); o.value = c.name; o.textContent = c.name; segSel.appendChild(o); });
+      (cats || []).forEach((c) => { const o = document.createElement("option"); o.value = c.name; o.textContent = c.name; $("segment").appendChild(o); });
 
+      // ---------- repetidores ----------
+      function xBtn(row) { const b = document.createElement("button"); b.type = "button"; b.className = "rep-x"; b.innerHTML = '<i data-lucide="trash-2" class="w-4 h-4"></i>'; b.onclick = () => { row.remove(); }; return b; }
+      function addStr(containerId, ph, v = "") {
+        const c = $(containerId), row = document.createElement("div"); row.className = "rep-row";
+        const inp = document.createElement("input"); inp.className = "inp"; inp.placeholder = ph; inp.value = v || "";
+        row.append(inp, xBtn(row)); c.appendChild(row); createIcons({ icons });
+      }
+      function readStr(containerId) { return [...$(containerId).querySelectorAll("input")].map((i) => i.value.trim()).filter(Boolean); }
+      function addStep(st = {}) {
+        const c = $("steps"), row = document.createElement("div"); row.className = "rep-row rep-step";
+        const num = document.createElement("input"); num.className = "inp"; num.placeholder = "01"; num.value = st.num || "";
+        const ti = document.createElement("input"); ti.className = "inp"; ti.placeholder = "Título"; ti.value = st.title || "";
+        const tx = document.createElement("input"); tx.className = "inp"; tx.placeholder = "Texto"; tx.value = st.text || "";
+        row.append(num, ti, tx, xBtn(row)); c.appendChild(row); createIcons({ icons });
+      }
+      function readSteps() { return [...$("steps").children].map((r) => { const i = r.querySelectorAll("input"); return { num: i[0].value.trim(), title: i[1].value.trim(), text: i[2].value.trim() }; }).filter((s) => s.title || s.text); }
+      function addFaq(f = {}) {
+        const c = $("faq"), row = document.createElement("div"); row.className = "rep-row rep-faq";
+        const wrap = document.createElement("div"); wrap.className = "space-y-1";
+        const q = document.createElement("input"); q.className = "inp"; q.placeholder = "Pergunta"; q.value = f.q || "";
+        const a = document.createElement("textarea"); a.className = "inp"; a.rows = 2; a.placeholder = "Resposta"; a.value = f.a || "";
+        wrap.append(q, a); row.append(wrap, xBtn(row)); c.appendChild(row); createIcons({ icons });
+      }
+      function readFaq() { return [...$("faq").children].map((r) => ({ q: r.querySelector("input").value.trim(), a: r.querySelector("textarea").value.trim() })).filter((f) => f.q || f.a); }
+
+      document.querySelectorAll("[data-add]").forEach((b) => b.addEventListener("click", () => {
+        const k = b.dataset.add;
+        if (k === "benefits") addStr("benefits", "Benefício (use <strong>…</strong>)");
+        else if (k === "cta_items") addStr("cta_items", "Item do CTA");
+        else if (k === "step") addStep();
+        else if (k === "faq") addFaq();
+      }));
+
+      // ---------- tabela ----------
       function render(list) {
-        rows.innerHTML = list.length ? list.map((i) => `
+        rows.innerHTML = list.length ? list.map((i) => {
+          const rich = i.headline ? `<span class="text-[0.7rem] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-brand-ink">completa</span>` : `<span class="text-[0.7rem] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">básica</span>`;
+          return `
           <tr class="border-t border-gray-100">
-            <td class="px-5 py-3 text-sm font-semibold">${esc(i.title)}</td>
+            <td class="px-5 py-3 text-sm font-semibold">${esc(i.title)}<div class="text-[0.7rem] text-gray-400 font-normal">/presentes/${esc(i.slug)}</div></td>
             <td class="px-5 py-3 text-sm text-gray-500 capitalize">${esc(i.type) || "—"}</td>
             <td class="px-5 py-3 text-sm text-gray-500">${esc(i.segment) || "—"}</td>
+            <td class="px-5 py-3">${rich}</td>
             <td class="px-5 py-3"><button data-toggle="${i.id}" data-v="${i.active}" class="text-[0.7rem] font-bold px-2.5 py-1 rounded-full ${i.active ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-600"}">${i.active ? "Ativa" : "Inativa"}</button></td>
             <td class="px-5 py-3 text-right whitespace-nowrap">
-              <button data-edit='${esc(JSON.stringify(i))}' class="inline-grid w-8 h-8 place-items-center rounded-lg text-gray-400 hover:text-brand-ink hover:bg-gray-100"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+              <a href="https://certificacaoiso.com.br/presentes/${esc(i.slug)}/" target="_blank" rel="noopener" class="inline-grid w-8 h-8 place-items-center rounded-lg text-gray-400 hover:text-brand-ink hover:bg-gray-100"><i data-lucide="external-link" class="w-4 h-4"></i></a>
+              <button data-edit="${i.id}" class="inline-grid w-8 h-8 place-items-center rounded-lg text-gray-400 hover:text-brand-ink hover:bg-gray-100"><i data-lucide="pencil" class="w-4 h-4"></i></button>
               <button data-del="${i.id}" class="inline-grid w-8 h-8 place-items-center rounded-lg text-gray-400 hover:text-red-600 hover:bg-gray-100"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
             </td>
-          </tr>`).join("") : '<tr><td colspan="5" class="px-5 py-8 text-sm text-gray-400">Nenhuma isca.</td></tr>';
+          </tr>`;
+        }).join("") : '<tr><td colspan="6" class="px-5 py-8 text-sm text-gray-400">Nenhuma isca.</td></tr>';
         rows.querySelectorAll("[data-toggle]").forEach((b) => b.addEventListener("click", async () => { await supa.from(T).update({ active: b.dataset.v !== "true" }).eq("id", b.dataset.toggle); loadData(); }));
         rows.querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", async () => { if (confirm("Excluir isca?")) { await supa.from(T).delete().eq("id", b.dataset.del); loadData(); } }));
-        rows.querySelectorAll("[data-edit]").forEach((b) => b.addEventListener("click", () => openForm(JSON.parse(b.dataset.edit))));
+        rows.querySelectorAll("[data-edit]").forEach((b) => b.addEventListener("click", () => openForm(all.find((x) => x.id === b.dataset.edit) || {})));
         createIcons({ icons });
       }
       async function loadData() {
         const { data, error } = await supa.from(T).select("*").order("segment").order("title");
-        if (error) { rows.innerHTML = `<tr><td colspan="5" class="px-5 py-8 text-sm text-red-600">${esc(error.message)}</td></tr>`; return; }
+        if (error) { rows.innerHTML = `<tr><td colspan="6" class="px-5 py-8 text-sm text-red-600">${esc(error.message)}</td></tr>`; return; }
         all = data || []; render(all); countEl.textContent = `${all.length} iscas`;
       }
+
+      // ---------- form ----------
       function openForm(d = {}) {
         $("dlg-title").textContent = d.id ? "Editar isca" : "Nova isca";
-        for (const k of ["id", "title", "slug", "cta", "file_url", "image_url", "description"]) $(k).value = d[k] || "";
+        for (const k of ["id", "title", "slug", "cta", "file_url", "image_url", "description", "headline", "subhead", "cta_title", "cta_copy"]) $(k).value = d[k] || "";
         $("type").value = d.type || "ebook"; $("segment").value = d.segment || "";
         $("active").checked = d.id ? !!d.active : true; $("msg").textContent = "";
+        $("slug-prev").textContent = d.slug || "";
+        ["benefits", "steps", "cta_items", "faq"].forEach((id) => ($(id).innerHTML = ""));
+        (Array.isArray(d.benefits) ? d.benefits : []).forEach((v) => addStr("benefits", "Benefício", v));
+        (Array.isArray(d.steps) ? d.steps : []).forEach((v) => addStep(v));
+        (Array.isArray(d.cta_items) ? d.cta_items : []).forEach((v) => addStr("cta_items", "Item do CTA", v));
+        (Array.isArray(d.faq) ? d.faq : []).forEach((v) => addFaq(v));
         dlg.showModal();
       }
-      // auto-slug a partir do título (em nova isca)
-      $("title").addEventListener("input", (e) => { if (!$("id").value && !$("slug").dataset.t) $("slug").value = slugify(e.target.value); });
-      $("slug").addEventListener("input", () => { $("slug").dataset.t = "1"; });
+      $("title").addEventListener("input", (e) => { if (!$("id").value && !$("slug").dataset.t) { $("slug").value = slugify(e.target.value); $("slug-prev").textContent = $("slug").value; } });
+      $("slug").addEventListener("input", () => { $("slug").dataset.t = "1"; $("slug-prev").textContent = $("slug").value; });
       $("img-up").addEventListener("click", () => { const i = document.createElement("input"); i.type = "file"; i.accept = "image/*"; i.onchange = async () => { if (!i.files?.[0]) return; $("msg").textContent = "Enviando…"; try { $("image_url").value = await uploadMedia(i.files[0], "iscas"); $("msg").textContent = ""; } catch (e) { $("msg").textContent = "Erro upload (bucket 'media'?): " + e.message; } }; i.click(); });
 
-      document.getElementById("new").addEventListener("click", () => { openForm(); $("slug").dataset.t = ""; });
-      document.getElementById("cancel").addEventListener("click", () => dlg.close());
+      $("new").addEventListener("click", () => { openForm(); $("slug").dataset.t = ""; });
+      $("cancel").addEventListener("click", () => dlg.close());
+      $("cancel-x").addEventListener("click", () => dlg.close());
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
-        const row = { title: $("title").value, slug: $("slug").value || slugify($("title").value), type: $("type").value, segment: $("segment").value || null, cta: $("cta").value || null, file_url: $("file_url").value || null, image_url: $("image_url").value || null, description: $("description").value || null, active: $("active").checked };
+        const row = {
+          title: $("title").value, slug: $("slug").value || slugify($("title").value), type: $("type").value,
+          segment: $("segment").value || null, cta: $("cta").value || null, file_url: $("file_url").value || null,
+          image_url: $("image_url").value || null, description: $("description").value || null, active: $("active").checked,
+          headline: $("headline").value || null, subhead: $("subhead").value || null,
+          cta_title: $("cta_title").value || null, cta_copy: $("cta_copy").value || null,
+          benefits: readStr("benefits"), steps: readSteps(), cta_items: readStr("cta_items"), faq: readFaq(),
+        };
         const id = $("id").value;
+        $("msg").textContent = "Salvando…";
         const res = id ? await supa.from(T).update(row).eq("id", id) : await supa.from(T).insert(row);
-        if (res.error) $("msg").textContent = "Erro: " + res.error.message; else { dlg.close(); loadData(); }
+        if (res.error) $("msg").textContent = "Erro: " + res.error.message;
+        else { dlg.close(); loadData(); }
       });
-      document.getElementById("q").addEventListener("input", (e) => { const t = e.target.value.toLowerCase(); render(all.filter((i) => (i.title || "").toLowerCase().includes(t) || (i.segment || "").toLowerCase().includes(t))); });
+      $("q").addEventListener("input", (e) => { const t = e.target.value.toLowerCase(); render(all.filter((i) => (i.title || "").toLowerCase().includes(t) || (i.segment || "").toLowerCase().includes(t))); });
+
+      // ---------- republicar ----------
+      $("republish").addEventListener("click", async () => {
+        const b = $("republish"); b.disabled = true; const old = b.innerHTML;
+        b.innerHTML = '<i data-lucide="loader" class="w-4 h-4"></i> Publicando…'; createIcons({ icons });
+        try { const { error } = await supa.functions.invoke("blog-templum-rebuild"); if (error) throw error; b.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> Rebuild disparado'; }
+        catch (e) { b.innerHTML = '<i data-lucide="alert-triangle" class="w-4 h-4"></i> Falhou'; alert("Erro ao republicar: " + (e.message || e)); }
+        createIcons({ icons });
+        setTimeout(() => { b.innerHTML = old; b.disabled = false; createIcons({ icons }); }, 4000);
+      });
+
       loadData();
     }
   </script>

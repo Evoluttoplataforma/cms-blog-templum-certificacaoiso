@@ -54,7 +54,7 @@ import CmsLayout from "../layouts/CmsLayout.astro";
         e.preventDefault(); $("msg").textContent = "Criando…";
         const body = { full_name: $("full_name").value, email: $("email").value, password: $("password").value, role: $("role").value };
         // Edge Function create-user (service_role) — cria direto no Auth com senha
-        const { data, error } = await supa.functions.invoke("create-user", { body });
+        const { data, error } = await supa.functions.invoke("blog-templum-create-user", { body });
         if (error || data?.error) $("msg").textContent = "Erro: " + (data?.error || error.message);
         else { dlg.close(); load(); }
       });

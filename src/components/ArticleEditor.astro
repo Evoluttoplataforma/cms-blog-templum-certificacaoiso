@@ -223,7 +223,7 @@
       if (!slug0) history.replaceState(null, "", `${BASE}/artigos/editar?slug=${encodeURIComponent(slug)}`);
       if (status === "published") {
         msg.textContent = "Publicado ✓ — disparando rebuild…";
-        const { error } = await supa.functions.invoke("rebuild");
+        const { error } = await supa.functions.invoke("blog-templum-rebuild");
         msg.textContent = error ? "Publicado ✓ (rebuild: função 'rebuild' no ar?)" : "Publicado ✓ — site reconstrói em ~2 min.";
       } else msg.textContent = "Rascunho salvo ✓";
     }

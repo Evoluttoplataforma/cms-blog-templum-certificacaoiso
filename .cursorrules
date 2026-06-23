@@ -1,0 +1,11 @@
+# Cursor rules — repo do CMS (certificacaoiso.com.br/acesso) · Worker certificacaoiso-cms
+Leia ARQUITETURA.md e CLAUDE.md deste repo antes de tudo.
+
+REGRAS DE GIT (não dar zika):
+- São 3 repos separados (site / blog / cms). Este é o CMS. Não commite mudança de outro projeto aqui.
+- `git push origin main` = DEPLOY EM PRODUÇÃO (Cloudflare Workers Builds). Só pushe pra publicar.
+- Deploy usa `wrangler versions upload`: NÃO adicione `routes` no wrangler.toml (quebra o deploy). Rotas vão no painel/proxy.
+- Antes de pushar: `npm run build`. Rode `git status` e confirme `git remote -v`.
+- Só commite/pushe quando o usuário pedir. Commit de IA termina com: Co-Authored-By: Claude <noreply@anthropic.com>
+- Nunca commitar: .env, secrets, service_role, node_modules, dist.
+- CRUD client-side no Supabase (RLS+Auth). Tabelas blog_templum_*. service_role nunca aqui.

@@ -1,22 +1,47 @@
 ---
 import CmsLayout from "../layouts/CmsLayout.astro";
+const SEGMENTOS = ["Indústria","Construção Civil","Alimentos e Bebidas","Saúde e Bem-estar","Tecnologia e TI","Serviços","Logística e Transporte","Comércio e Varejo","Agronegócio","Outro"];
 ---
 <CmsLayout title="Histórias" active="historias">
   <button slot="actions" id="new" class="px-4 py-2 rounded-full bg-brand-ink text-white text-sm font-bold shadow-lg hover:brightness-110 flex items-center gap-1.5"><i data-lucide="plus" class="w-4 h-4"></i> Nova história</button>
+
+  <div class="flex items-center gap-2 mb-4">
+    <button data-tab="pending" class="tab tab-on">Pendentes <span id="c-pending" class="badge"></span></button>
+    <button data-tab="approved" class="tab">Aprovadas <span id="c-approved" class="badge"></span></button>
+    <button data-tab="all" class="tab">Todas</button>
+  </div>
+
   <div id="grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"><p class="text-sm text-gray-400">Carregando…</p></div>
 
-  <dialog id="dlg" class="rounded-2xl p-0 w-full max-w-md backdrop:bg-black/40">
+  <dialog id="dlg" class="rounded-2xl p-0 w-full max-w-lg backdrop:bg-black/40">
     <form id="form" class="p-6 space-y-3">
       <h3 class="font-extrabold text-lg" id="dlg-title">Nova história</h3>
       <input type="hidden" id="id" />
       <div><label class="lb">Título</label><input id="title" class="inp" required /></div>
-      <div><label class="lb">Autor</label><input id="author_name" class="inp" /></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="lb">Autor</label><input id="author_name" class="inp" placeholder="Nome do cliente" /></div>
+        <div><label class="lb">Cargo</label><input id="role" class="inp" placeholder="Ex.: Diretor de Qualidade" /></div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="lb">Empresa</label><input id="company" class="inp" /></div>
+        <div><label class="lb">Segmento</label><select id="segment" class="inp"><option value="">— selecione —</option>{SEGMENTOS.map((s) => <option value={s}>{s}</option>)}</select></div>
+      </div>
       <div><label class="lb">Imagem (URL)</label><input id="image_url" class="inp" placeholder="https://…" /></div>
-      <div><label class="lb">Descrição</label><textarea id="description" rows="3" class="inp"></textarea></div>
+      <div><label class="lb">História</label><textarea id="description" rows="4" class="inp"></textarea></div>
+      <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="featured" /> Destaque (aparece primeiro)</label>
+      <p id="msg" class="text-xs text-gray-500"></p>
       <div class="flex gap-2 justify-end pt-2"><button type="button" id="cancel" class="px-4 py-2 rounded-full border border-gray-300 text-sm font-bold">Cancelar</button><button type="submit" class="px-4 py-2 rounded-full bg-brand-ink text-white text-sm font-bold">Salvar</button></div>
     </form>
   </dialog>
-  <style>.lb{display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:4px}.inp{width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px}.inp:focus{outline:none;border-color:#FF5925}</style>
+  <style>
+    .lb{display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:4px}
+    .inp{width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;background:#fff}
+    .inp:focus{outline:none;border-color:#FF5925}
+    .tab{padding:6px 14px;border-radius:999px;font-size:13px;font-weight:700;color:#6b7280;border:1px solid #e5e7eb;background:#fff;display:inline-flex;align-items:center;gap:6px}
+    .tab-on{background:#222831;color:#fff;border-color:#222831}
+    .badge{font-size:11px;background:#FF5925;color:#fff;border-radius:999px;padding:0 6px;min-width:18px;text-align:center}
+    .tab-on .badge{background:#fff;color:#222831}
+  </style>
 
   <script>
     import { supa, requireAuth, esc } from "../lib/supa.ts";
@@ -25,39 +50,60 @@ import CmsLayout from "../layouts/CmsLayout.astro";
     if (s) {
       const T = "blog_templum_historias", grid = document.getElementById("grid"), dlg = document.getElementById("dlg"), form = document.getElementById("form");
       const $ = (id) => document.getElementById(id);
-      async function load() {
-        const { data, error } = await supa.from(T).select("*").order("created_at", { ascending: false });
-        if (error) { grid.innerHTML = `<p class="text-sm text-red-600">${esc(error.message)}</p>`; return; }
-        grid.innerHTML = (data && data.length) ? data.map((h) => `
-          <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+      let all = [], tab = "pending";
+
+      function counts() {
+        $("c-pending").textContent = all.filter((h) => h.status === "pending").length || "";
+        $("c-approved").textContent = all.filter((h) => h.status === "approved").length || "";
+      }
+      function render() {
+        const list = tab === "all" ? all : all.filter((h) => h.status === tab);
+        grid.innerHTML = list.length ? list.map((h) => `
+          <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
             ${h.image_url ? `<div class="aspect-[16/9] bg-gray-100 bg-cover bg-center" style="background-image:url('${esc(h.image_url)}')"></div>` : ""}
-            <div class="p-4">
+            <div class="p-4 flex flex-col flex-1">
               <div class="flex items-center justify-between gap-2">
                 <p class="font-semibold text-sm truncate">${esc(h.title)}</p>
-                <span class="text-[0.65rem] font-bold px-2 py-0.5 rounded-full shrink-0 ${h.status === "approved" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}">${h.status}</span>
+                <span class="text-[0.65rem] font-bold px-2 py-0.5 rounded-full shrink-0 ${h.status === "approved" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}">${h.status === "approved" ? "aprovada" : "pendente"}</span>
               </div>
-              <p class="text-xs text-gray-400 mt-0.5">${esc(h.author_name) || ""}</p>
-              <p class="text-sm text-gray-600 mt-2 line-clamp-3">${esc(h.description) || ""}</p>
+              <p class="text-xs text-gray-400 mt-0.5">${[esc(h.author_name), esc(h.role), esc(h.company)].filter(Boolean).join(" · ")}</p>
+              ${h.segment ? `<span class="inline-block w-fit text-[0.65rem] font-bold text-brand-ink bg-orange-100 px-2 py-0.5 rounded-full mt-1.5">${esc(h.segment)}</span>` : ""}
+              <p class="text-sm text-gray-600 mt-2 line-clamp-3 flex-1">${esc(h.description) || ""}</p>
               <div class="flex flex-wrap gap-2 mt-3">
-                ${h.status !== "approved" ? `<button data-app="${h.id}" class="px-3 py-1.5 rounded-full bg-green-600 text-white text-xs font-bold">Aprovar</button>` : ""}
-                <button data-edit='${esc(JSON.stringify(h))}' class="px-3 py-1.5 rounded-full border border-gray-300 text-xs font-bold">Editar</button>
+                ${h.status !== "approved" ? `<button data-app="${h.id}" class="px-3 py-1.5 rounded-full bg-green-600 text-white text-xs font-bold">Aprovar</button>` : `<button data-unapp="${h.id}" class="px-3 py-1.5 rounded-full border border-gray-300 text-xs font-bold">Despublicar</button>`}
+                <button data-edit="${h.id}" class="px-3 py-1.5 rounded-full border border-gray-300 text-xs font-bold">Editar</button>
                 <button data-del="${h.id}" class="px-3 py-1.5 rounded-full border border-red-200 text-red-600 text-xs font-bold">Excluir</button>
               </div>
             </div>
-          </div>`).join("") : '<p class="text-sm text-gray-400">Nenhuma história.</p>';
+          </div>`).join("") : `<p class="text-sm text-gray-400">Nenhuma história ${tab === "pending" ? "pendente" : tab === "approved" ? "aprovada" : ""}.</p>`;
         grid.querySelectorAll("[data-app]").forEach((x) => x.addEventListener("click", async () => { await supa.from(T).update({ status: "approved" }).eq("id", x.dataset.app); load(); }));
+        grid.querySelectorAll("[data-unapp]").forEach((x) => x.addEventListener("click", async () => { await supa.from(T).update({ status: "pending" }).eq("id", x.dataset.unapp); load(); }));
         grid.querySelectorAll("[data-del]").forEach((x) => x.addEventListener("click", async () => { if (confirm("Excluir história?")) { await supa.from(T).delete().eq("id", x.dataset.del); load(); } }));
-        grid.querySelectorAll("[data-edit]").forEach((x) => x.addEventListener("click", () => openForm(JSON.parse(x.dataset.edit))));
+        grid.querySelectorAll("[data-edit]").forEach((x) => x.addEventListener("click", () => openForm(all.find((h) => h.id === x.dataset.edit) || {})));
       }
-      function openForm(d = {}) { $("dlg-title").textContent = d.id ? "Editar história" : "Nova história"; for (const k of ["id", "title", "author_name", "image_url", "description"]) $(k).value = d[k] || ""; dlg.showModal(); }
+      async function load() {
+        const { data, error } = await supa.from(T).select("*").order("featured", { ascending: false }).order("created_at", { ascending: false });
+        if (error) { grid.innerHTML = `<p class="text-sm text-red-600">${esc(error.message)}</p>`; return; }
+        all = data || []; counts(); render();
+      }
+      function openForm(d = {}) {
+        $("dlg-title").textContent = d.id ? "Editar história" : "Nova história";
+        for (const k of ["id", "title", "author_name", "role", "company", "image_url", "description"]) $(k).value = d[k] || "";
+        $("segment").value = d.segment || ""; $("featured").checked = !!d.featured; $("msg").textContent = "";
+        dlg.showModal();
+      }
+      document.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => {
+        tab = b.dataset.tab; document.querySelectorAll("[data-tab]").forEach((x) => x.classList.toggle("tab-on", x === b)); render();
+      }));
       document.getElementById("new").addEventListener("click", () => openForm());
       document.getElementById("cancel").addEventListener("click", () => dlg.close());
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
-        const row = { title: $("title").value, author_name: $("author_name").value || null, image_url: $("image_url").value || null, description: $("description").value || null };
+        const row = { title: $("title").value, author_name: $("author_name").value || null, role: $("role").value || null, company: $("company").value || null, segment: $("segment").value || null, image_url: $("image_url").value || null, description: $("description").value || null, featured: $("featured").checked };
         const id = $("id").value;
+        $("msg").textContent = "Salvando…";
         const res = id ? await supa.from(T).update(row).eq("id", id) : await supa.from(T).insert({ ...row, status: "approved" });
-        if (res.error) alert(res.error.message); else { dlg.close(); load(); }
+        if (res.error) $("msg").textContent = "Erro: " + res.error.message; else { dlg.close(); load(); }
       });
       load(); createIcons({ icons });
     }

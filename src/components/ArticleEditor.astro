@@ -27,7 +27,8 @@
         <span class="tbsep"></span>
         <button type="button" data-cmd="undo" class="tb" title="Desfazer"><i data-lucide="undo-2" class="w-4 h-4"></i></button>
         <button type="button" data-cmd="redo" class="tb" title="Refazer"><i data-lucide="redo-2" class="w-4 h-4"></i></button>
-        <button type="button" id="tb-clear" class="tb ml-auto text-gray-400" title="Limpar formatação"><i data-lucide="eraser" class="w-4 h-4"></i></button>
+        <button type="button" id="tb-structure" class="tb ml-auto text-brand-ink font-bold" title="Limpar & Estruturar (parágrafos + títulos automáticos)"><i data-lucide="wand-sparkles" class="w-4 h-4"></i> <span class="text-xs">Estruturar</span></button>
+        <button type="button" id="tb-clear" class="tb text-gray-400" title="Limpar formatação"><i data-lucide="eraser" class="w-4 h-4"></i></button>
       </div>
       <div id="editor" contenteditable="true" class="ed px-7 py-6 min-h-[460px] focus:outline-none"></div>
     </div>
@@ -131,12 +132,52 @@
     $("tb-link").addEventListener("click", () => { const u = prompt("URL do link:"); if (u) { editor.focus(); document.execCommand("createLink", false, u); } });
     $("tb-img").addEventListener("click", () => pickImage((url) => { editor.focus(); document.execCommand("insertImage", false, url); }));
     $("tb-clear").addEventListener("click", () => { editor.focus(); document.execCommand("removeFormat"); document.execCommand("formatBlock", false, "<p>"); });
-    // paste limpo (texto, mantendo quebras de parágrafo)
+    // ---- Limpar & Estruturar: qualquer texto/HTML colado → <p> + <h2>/<h3> automáticos ----
+    const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    function structureHTML(input) {
+      // 1) normaliza para texto-com-quebras (decodifica &lt;, vira <br>/<p>/<li> em \n, remove tags)
+      const ta = document.createElement("textarea"); ta.innerHTML = input; let t = ta.value;
+      t = t.replace(/\r/g, "")
+           .replace(/<\/(p|div|h[1-6]|li|tr)>/gi, "\n")
+           .replace(/<br\s*\/?>/gi, "\n")
+           .replace(/<li[^>]*>/gi, "• ")
+           .replace(/<[^>]+>/g, "")
+           .replace(/ /g, " ");
+      const title = ($("title").value || "").trim().toLowerCase();
+      const lines = t.split("\n").map((l) => l.trim());
+      const out = []; let ul = [];
+      const flushUl = () => { if (ul.length) { out.push("<ul>" + ul.map((x) => `<li>${esc(x)}</li>`).join("") + "</ul>"); ul = []; } };
+      for (const line of lines) {
+        if (!line) { flushUl(); continue; }
+        if (line.toLowerCase() === title) continue;                                  // não repete o título no corpo (h1 já é o título)
+        let m = line.match(/^(#{1,6})\s+(.+)$/);                                      // markdown # / ##
+        if (m) { flushUl(); const lv = Math.min(3, m[1].length + 1); out.push(`<h${lv}>${esc(m[2])}</h${lv}>`); continue; }
+        m = line.match(/^[-*•]\s+(.+)$/);                                             // bullet
+        if (m) { ul.push(m[1]); continue; }
+        flushUl();
+        const endsSentence = /[.!?;:,]$/.test(line);
+        const words = line.split(/\s+/).length;
+        const numbered = /^\d+[.)]\s+\S/.test(line) && line.length <= 80 && !endsSentence;  // "1. Título" → h3
+        const headingLike = line.length <= 85 && words <= 12 && !endsSentence;              // linha curta isolada → h2
+        if (numbered) out.push(`<h3>${esc(line)}</h3>`);
+        else if (headingLike) out.push(`<h2>${esc(line)}</h2>`);
+        else out.push(`<p>${esc(line)}</p>`);
+      }
+      flushUl();
+      return out.join("") || "<p></p>";
+    }
+    // ao colar → já estrutura (resolve o bug do <br> e dá H2/H3 sozinho)
     editor.addEventListener("paste", (e) => {
       e.preventDefault();
-      const t = (e.clipboardData || window.clipboardData).getData("text/plain");
-      const html = t.split(/\n{2,}/).map((p) => `<p>${p.replace(/\n/g, "<br>").replace(/</g, "&lt;")}</p>`).join("");
-      document.execCommand("insertHTML", false, html); updateCounts();
+      const cd = e.clipboardData || window.clipboardData;
+      const t = cd.getData("text/html") || cd.getData("text/plain") || "";
+      document.execCommand("insertHTML", false, structureHTML(t)); updateCounts();
+    });
+    // botão "Estruturar" → reprocessa TODO o conteúdo (conserta artigo já bagunçado)
+    $("tb-structure").addEventListener("click", () => {
+      if (!editor.innerHTML.trim()) return;
+      if (!confirm("Reestruturar o texto em parágrafos e títulos automáticos? (revise os H2/H3 depois)")) return;
+      editor.innerHTML = structureHTML(editor.innerHTML); updateCounts();
     });
 
     function pickImage(cb) {

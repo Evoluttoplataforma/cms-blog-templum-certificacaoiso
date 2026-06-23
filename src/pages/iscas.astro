@@ -60,6 +60,12 @@ import CmsLayout from "../layouts/CmsLayout.astro";
           <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="active" checked /> Ativa</label>
         </section>
 
+        <!-- APLICAR POR NORMA -->
+        <section class="space-y-3">
+          <h4 class="sec">Material destaque nestas normas <span class="hint">(aparece na sidebar dos artigos da norma)</span></h4>
+          <div id="normas" class="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2"></div>
+        </section>
+
         <!-- TOPO DA LANDING -->
         <section class="space-y-3">
           <h4 class="sec">Topo da landing</h4>
@@ -122,6 +128,8 @@ import CmsLayout from "../layouts/CmsLayout.astro";
     .rep-faq{display:grid;grid-template-columns:1fr 32px;gap:8px}
     .rep-x{width:32px;height:36px;display:grid;place-items:center;border:1px solid #e5e7eb;border-radius:8px;color:#9ca3af;flex:none}
     .rep-x:hover{color:#dc2626;border-color:#fecaca}
+    .norma-chk{display:flex;align-items:center;gap:6px;font-size:13px;color:#374151;cursor:pointer}
+    .norma-chk input{accent-color:#FF5925}
   </style>
 
   <script>
@@ -135,9 +143,16 @@ import CmsLayout from "../layouts/CmsLayout.astro";
       const slugify = (v) => v.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
       let all = [];
 
-      // categorias p/ o segmento
-      const { data: cats } = await supa.from("blog_templum_categories").select("name").order("sort_order");
-      (cats || []).forEach((c) => { const o = document.createElement("option"); o.value = c.name; o.textContent = c.name; $("segment").appendChild(o); });
+      // categorias (normas) p/ o segmento + mapeamento da isca destaque
+      let catsList = [];
+      async function loadCats() {
+        const { data } = await supa.from("blog_templum_categories").select("name,isca_slug").order("sort_order");
+        catsList = data || [];
+      }
+      await loadCats();
+      catsList.forEach((c) => { const o = document.createElement("option"); o.value = c.name; o.textContent = c.name; $("segment").appendChild(o); });
+      // checkboxes "aparece como material nestas normas"
+      $("normas").innerHTML = catsList.map((c) => `<label class="norma-chk"><input type="checkbox" value="${esc(c.name)}" /> ${esc(c.name)}</label>`).join("");
 
       // ---------- repetidores ----------
       function xBtn(row) { const b = document.createElement("button"); b.type = "button"; b.className = "rep-x"; b.innerHTML = '<i data-lucide="trash-2" class="w-4 h-4"></i>'; b.onclick = () => { row.remove(); }; return b; }
@@ -213,6 +228,8 @@ import CmsLayout from "../layouts/CmsLayout.astro";
         (Array.isArray(d.steps) ? d.steps : []).forEach((v) => addStep(v));
         (Array.isArray(d.cta_items) ? d.cta_items : []).forEach((v) => addStr("cta_items", "Item do CTA", v));
         (Array.isArray(d.faq) ? d.faq : []).forEach((v) => addFaq(v));
+        // marca as normas onde ESTA isca já é o material destaque
+        $("normas").querySelectorAll("input").forEach((c) => { c.checked = !!d.slug && catsList.some((x) => x.name === c.value && x.isca_slug === d.slug); });
         dlg.showModal();
       }
       $("title").addEventListener("input", (e) => { if (!$("id").value && !$("slug").dataset.t) { $("slug").value = slugify(e.target.value); $("slug-prev").textContent = $("slug").value; } });
@@ -235,8 +252,16 @@ import CmsLayout from "../layouts/CmsLayout.astro";
         const id = $("id").value;
         $("msg").textContent = "Salvando…";
         const res = id ? await supa.from(T).update(row).eq("id", id) : await supa.from(T).insert(row);
-        if (res.error) $("msg").textContent = "Erro: " + res.error.message;
-        else { dlg.close(); loadData(); }
+        if (res.error) { $("msg").textContent = "Erro: " + res.error.message; return; }
+        // aplica/retira esta isca como destaque das normas marcadas
+        const checked = new Set([...$("normas").querySelectorAll("input:checked")].map((c) => c.value));
+        const ops = catsList.map((c) => {
+          if (checked.has(c.name) && c.isca_slug !== row.slug) return supa.from("blog_templum_categories").update({ isca_slug: row.slug }).eq("name", c.name);
+          if (!checked.has(c.name) && c.isca_slug === row.slug) return supa.from("blog_templum_categories").update({ isca_slug: null }).eq("name", c.name);
+          return null;
+        }).filter(Boolean);
+        if (ops.length) { await Promise.all(ops); await loadCats(); }
+        dlg.close(); loadData();
       });
       $("q").addEventListener("input", (e) => { const t = e.target.value.toLowerCase(); render(all.filter((i) => (i.title || "").toLowerCase().includes(t) || (i.segment || "").toLowerCase().includes(t))); });
 

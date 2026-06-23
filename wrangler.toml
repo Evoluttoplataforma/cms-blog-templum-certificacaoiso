@@ -1,5 +1,5 @@
 # Cloudflare Workers — CMS do blog, servido em certificacaoiso.com.br/acesso
-name = "certificacaoiso-cms"
+name = "cms-blog-templum-certificacaoiso"
 main = "worker.js"
 compatibility_date = "2025-01-01"
 

@@ -149,7 +149,7 @@
       const flushUl = () => { if (ul.length) { out.push("<ul>" + ul.map((x) => `<li>${esc(x)}</li>`).join("") + "</ul>"); ul = []; } };
       for (const line of lines) {
         if (!line) { flushUl(); continue; }
-        if (line.toLowerCase() === title) continue;                                  // não repete o título no corpo (h1 já é o título)
+        if (title && title.length > 12 && line.toLowerCase().startsWith(title)) continue; // não repete o título no corpo (h1 já é o título)
         let m = line.match(/^(#{1,6})\s+(.+)$/);                                      // markdown # / ##
         if (m) { flushUl(); const lv = Math.min(3, m[1].length + 1); out.push(`<h${lv}>${esc(m[2])}</h${lv}>`); continue; }
         m = line.match(/^[-*•]\s+(.+)$/);                                             // bullet

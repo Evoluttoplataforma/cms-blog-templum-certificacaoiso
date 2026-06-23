@@ -4,79 +4,117 @@ import CmsLayout from "../layouts/CmsLayout.astro";
 <CmsLayout title="Iscas" active="iscas">
   <button slot="actions" id="new" class="px-4 py-2 rounded-full bg-brand-ink text-white text-sm font-bold shadow-lg hover:brightness-110 flex items-center gap-1.5"><i data-lucide="plus" class="w-4 h-4"></i> Nova isca</button>
 
+  <div class="mb-4 max-w-xs relative">
+    <i data-lucide="search" class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+    <input id="q" placeholder="Buscar isca…" class="w-full pl-9 pr-3 py-2 rounded-full border border-gray-200 bg-white text-sm focus:outline-none focus:border-brand-orange" />
+  </div>
+
   <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
     <table class="w-full">
       <thead><tr class="text-[0.65rem] uppercase tracking-widest text-gray-400 border-b border-gray-100">
-        <th class="text-left px-5 py-3 font-semibold">Título</th><th class="text-left px-5 py-3 font-semibold">Tipo</th>
-        <th class="text-left px-5 py-3 font-semibold">Downloads</th><th class="text-left px-5 py-3 font-semibold">Ativa</th><th></th>
+        <th class="text-left px-5 py-3 font-semibold">Título</th>
+        <th class="text-left px-5 py-3 font-semibold">Tipo</th>
+        <th class="text-left px-5 py-3 font-semibold">Segmento</th>
+        <th class="text-left px-5 py-3 font-semibold">Ativa</th><th></th>
       </tr></thead>
       <tbody id="rows"><tr><td colspan="5" class="px-5 py-8 text-sm text-gray-400">Carregando…</td></tr></tbody>
     </table>
   </div>
+  <p id="count" class="text-xs text-gray-400 mt-3"></p>
 
-  <dialog id="dlg" class="rounded-2xl p-0 w-full max-w-md backdrop:bg-black/40">
+  <dialog id="dlg" class="rounded-2xl p-0 w-full max-w-lg backdrop:bg-black/40">
     <form id="form" class="p-6 space-y-3">
       <h3 class="font-extrabold text-lg" id="dlg-title">Nova isca</h3>
       <input type="hidden" id="id" />
       <div><label class="lb">Título</label><input id="title" class="inp" required /></div>
       <div class="grid grid-cols-2 gap-3">
-        <div><label class="lb">Tipo</label><input id="type" class="inp" placeholder="ebook, planilha…" /></div>
+        <div><label class="lb">Slug (URL)</label><input id="slug" class="inp" placeholder="meu-material" /></div>
+        <div><label class="lb">Tipo</label><select id="type" class="inp"><option value="ebook">E-book</option><option value="planilha">Planilha</option><option value="webinar">Webinar</option><option value="checklist">Checklist</option></select></div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="lb">Segmento</label><select id="segment" class="inp"><option value="">— selecione —</option></select></div>
         <div><label class="lb">CTA</label><input id="cta" class="inp" placeholder="Baixar agora" /></div>
       </div>
-      <div><label class="lb">Arquivo (URL)</label><input id="file_url" class="inp" placeholder="https://…" /></div>
+      <div><label class="lb">Arquivo / link de download</label><input id="file_url" class="inp" placeholder="https://…" /></div>
+      <div>
+        <label class="lb">Imagem (capa)</label>
+        <div class="flex gap-2">
+          <input id="image_url" class="inp flex-1" placeholder="URL ou enviar →" />
+          <button type="button" id="img-up" class="px-3 rounded-lg border border-gray-300 hover:bg-gray-50"><i data-lucide="upload" class="w-4 h-4"></i></button>
+        </div>
+      </div>
       <div><label class="lb">Descrição</label><textarea id="description" rows="2" class="inp"></textarea></div>
       <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="active" checked /> Ativa</label>
+      <p id="msg" class="text-xs text-gray-500"></p>
       <div class="flex gap-2 justify-end pt-2">
         <button type="button" id="cancel" class="px-4 py-2 rounded-full border border-gray-300 text-sm font-bold">Cancelar</button>
         <button type="submit" class="px-4 py-2 rounded-full bg-brand-ink text-white text-sm font-bold">Salvar</button>
       </div>
     </form>
   </dialog>
-  <style>.lb{display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:4px}.inp{width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px}.inp:focus{outline:none;border-color:#FF5925}</style>
+  <style>.lb{display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:4px}.inp{width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;background:#fff}.inp:focus{outline:none;border-color:#FF5925}</style>
 
   <script>
-    import { supa, requireAuth, esc } from "../lib/supa.ts";
+    import { supa, requireAuth, esc, uploadMedia } from "../lib/supa.ts";
     import { createIcons, icons } from "lucide";
     const s = await requireAuth();
     if (s) {
       const T = "blog_templum_iscas";
-      const rows = document.getElementById("rows"), dlg = document.getElementById("dlg"), form = document.getElementById("form");
+      const rows = document.getElementById("rows"), dlg = document.getElementById("dlg"), form = document.getElementById("form"), countEl = document.getElementById("count");
       const $ = (id) => document.getElementById(id);
-      async function load() {
-        const { data, error } = await supa.from(T).select("*").order("created_at", { ascending: false });
-        if (error) { rows.innerHTML = `<tr><td colspan="5" class="px-5 py-8 text-sm text-red-600">${esc(error.message)}</td></tr>`; return; }
-        rows.innerHTML = (data && data.length) ? data.map((i) => `
+      const slugify = (v) => v.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+      let all = [];
+
+      // categorias p/ o segmento
+      const { data: cats } = await supa.from("blog_templum_categories").select("name").order("sort_order");
+      const segSel = $("segment");
+      (cats || []).forEach((c) => { const o = document.createElement("option"); o.value = c.name; o.textContent = c.name; segSel.appendChild(o); });
+
+      function render(list) {
+        rows.innerHTML = list.length ? list.map((i) => `
           <tr class="border-t border-gray-100">
             <td class="px-5 py-3 text-sm font-semibold">${esc(i.title)}</td>
-            <td class="px-5 py-3 text-sm text-gray-500">${esc(i.type) || "—"}</td>
-            <td class="px-5 py-3 text-sm text-gray-500">${i.downloads || 0}</td>
+            <td class="px-5 py-3 text-sm text-gray-500 capitalize">${esc(i.type) || "—"}</td>
+            <td class="px-5 py-3 text-sm text-gray-500">${esc(i.segment) || "—"}</td>
             <td class="px-5 py-3"><button data-toggle="${i.id}" data-v="${i.active}" class="text-[0.7rem] font-bold px-2.5 py-1 rounded-full ${i.active ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-600"}">${i.active ? "Ativa" : "Inativa"}</button></td>
             <td class="px-5 py-3 text-right whitespace-nowrap">
               <button data-edit='${esc(JSON.stringify(i))}' class="inline-grid w-8 h-8 place-items-center rounded-lg text-gray-400 hover:text-brand-ink hover:bg-gray-100"><i data-lucide="pencil" class="w-4 h-4"></i></button>
               <button data-del="${i.id}" class="inline-grid w-8 h-8 place-items-center rounded-lg text-gray-400 hover:text-red-600 hover:bg-gray-100"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
             </td>
           </tr>`).join("") : '<tr><td colspan="5" class="px-5 py-8 text-sm text-gray-400">Nenhuma isca.</td></tr>';
-        rows.querySelectorAll("[data-toggle]").forEach((b) => b.addEventListener("click", async () => { await supa.from(T).update({ active: b.dataset.v !== "true" }).eq("id", b.dataset.toggle); load(); }));
-        rows.querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", async () => { if (confirm("Excluir isca?")) { await supa.from(T).delete().eq("id", b.dataset.del); load(); } }));
+        rows.querySelectorAll("[data-toggle]").forEach((b) => b.addEventListener("click", async () => { await supa.from(T).update({ active: b.dataset.v !== "true" }).eq("id", b.dataset.toggle); loadData(); }));
+        rows.querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", async () => { if (confirm("Excluir isca?")) { await supa.from(T).delete().eq("id", b.dataset.del); loadData(); } }));
         rows.querySelectorAll("[data-edit]").forEach((b) => b.addEventListener("click", () => openForm(JSON.parse(b.dataset.edit))));
         createIcons({ icons });
       }
+      async function loadData() {
+        const { data, error } = await supa.from(T).select("*").order("segment").order("title");
+        if (error) { rows.innerHTML = `<tr><td colspan="5" class="px-5 py-8 text-sm text-red-600">${esc(error.message)}</td></tr>`; return; }
+        all = data || []; render(all); countEl.textContent = `${all.length} iscas`;
+      }
       function openForm(d = {}) {
         $("dlg-title").textContent = d.id ? "Editar isca" : "Nova isca";
-        for (const k of ["id", "title", "type", "cta", "file_url", "description"]) $(k).value = d[k] || "";
-        $("active").checked = d.id ? !!d.active : true;
+        for (const k of ["id", "title", "slug", "cta", "file_url", "image_url", "description"]) $(k).value = d[k] || "";
+        $("type").value = d.type || "ebook"; $("segment").value = d.segment || "";
+        $("active").checked = d.id ? !!d.active : true; $("msg").textContent = "";
         dlg.showModal();
       }
-      document.getElementById("new").addEventListener("click", () => openForm());
+      // auto-slug a partir do título (em nova isca)
+      $("title").addEventListener("input", (e) => { if (!$("id").value && !$("slug").dataset.t) $("slug").value = slugify(e.target.value); });
+      $("slug").addEventListener("input", () => { $("slug").dataset.t = "1"; });
+      $("img-up").addEventListener("click", () => { const i = document.createElement("input"); i.type = "file"; i.accept = "image/*"; i.onchange = async () => { if (!i.files?.[0]) return; $("msg").textContent = "Enviando…"; try { $("image_url").value = await uploadMedia(i.files[0], "iscas"); $("msg").textContent = ""; } catch (e) { $("msg").textContent = "Erro upload (bucket 'media'?): " + e.message; } }; i.click(); });
+
+      document.getElementById("new").addEventListener("click", () => { openForm(); $("slug").dataset.t = ""; });
       document.getElementById("cancel").addEventListener("click", () => dlg.close());
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
-        const row = { title: $("title").value, type: $("type").value || null, cta: $("cta").value || null, file_url: $("file_url").value || null, description: $("description").value || null, active: $("active").checked };
+        const row = { title: $("title").value, slug: $("slug").value || slugify($("title").value), type: $("type").value, segment: $("segment").value || null, cta: $("cta").value || null, file_url: $("file_url").value || null, image_url: $("image_url").value || null, description: $("description").value || null, active: $("active").checked };
         const id = $("id").value;
         const res = id ? await supa.from(T).update(row).eq("id", id) : await supa.from(T).insert(row);
-        if (res.error) alert(res.error.message); else { dlg.close(); load(); }
+        if (res.error) $("msg").textContent = "Erro: " + res.error.message; else { dlg.close(); loadData(); }
       });
-      load();
+      document.getElementById("q").addEventListener("input", (e) => { const t = e.target.value.toLowerCase(); render(all.filter((i) => (i.title || "").toLowerCase().includes(t) || (i.segment || "").toLowerCase().includes(t))); });
+      loadData();
     }
   </script>
 </CmsLayout>

@@ -2,16 +2,27 @@
 import CmsLayout from "../layouts/CmsLayout.astro";
 ---
 <CmsLayout title="Comentários" active="comentarios">
-  <div class="flex gap-2 mb-4" id="tabs">
-    <button data-tab="pending" class="tab tab-on">Pendentes</button>
-    <button data-tab="approved" class="tab">Aprovados</button>
+  <div class="flex flex-wrap items-center gap-2 mb-4" id="tabs">
+    <button data-tab="approved" class="tab tab-on">Aprovados <span id="c-approved" class="badge"></span></button>
+    <button data-tab="pending" class="tab">Pendentes <span id="c-pending" class="badge"></span></button>
+    <button data-tab="spam" class="tab">Rejeitados <span id="c-spam" class="badge"></span></button>
     <button data-tab="all" class="tab">Todos</button>
+    <div class="ml-auto relative">
+      <i data-lucide="search" class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+      <input id="q" placeholder="Buscar autor ou texto…" class="w-64 max-w-full pl-9 pr-3 py-2 rounded-full border border-gray-200 bg-white text-sm focus:outline-none focus:border-brand-orange" />
+    </div>
   </div>
   <div id="list" class="space-y-3"><p class="text-sm text-gray-400">Carregando…</p></div>
+  <div class="text-center mt-5">
+    <button id="more" class="px-5 py-2 rounded-full border border-gray-300 text-sm font-bold hidden">Carregar mais</button>
+    <p id="count" class="text-xs text-gray-400 mt-3"></p>
+  </div>
 
   <style>
-    .tab { padding:7px 16px; border-radius:999px; font-size:13px; font-weight:700; border:1px solid #e5e7eb; background:#fff; color:#6b7280; }
+    .tab { padding:7px 16px; border-radius:999px; font-size:13px; font-weight:700; border:1px solid #e5e7eb; background:#fff; color:#6b7280; display:inline-flex; align-items:center; gap:6px; }
     .tab-on { background:#222831; color:#fff; border-color:#222831; }
+    .badge { font-size:11px; background:#FF5925; color:#fff; border-radius:999px; padding:0 6px; min-width:18px; text-align:center; }
+    .tab-on .badge { background:#fff; color:#222831; }
   </style>
 
   <script>
@@ -19,45 +30,84 @@ import CmsLayout from "../layouts/CmsLayout.astro";
     import { createIcons, icons } from "lucide";
     const s = await requireAuth();
     if (s) {
-      const list = document.getElementById("list");
-      let tab = "pending";
+      const T = "blog_templum_comments", PAGE = 50;
+      const list = document.getElementById("list"), moreBtn = document.getElementById("more"), countEl = document.getElementById("count");
+      const $ = (id) => document.getElementById(id);
       const fmt = (d) => new Date(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
+      let tab = "approved", search = "", offset = 0, total = 0;
 
-      async function load() {
-        let q = supa.from("blog_templum_comments").select("*, blog_templum_posts(title,slug)").order("created_at", { ascending: false });
+      async function counts() {
+        for (const st of ["approved", "pending", "spam"]) {
+          const { count } = await supa.from(T).select("id", { count: "exact", head: true }).eq("status", st);
+          $("c-" + st).textContent = count || "";
+        }
+      }
+
+      function baseQuery(forCount) {
+        let q = supa.from(T).select(forCount ? "id" : "*, blog_templum_posts(title,slug)", forCount ? { count: "exact", head: true } : undefined);
         if (tab !== "all") q = q.eq("status", tab);
-        const { data, error } = await q.limit(300);
-        if (error) { list.innerHTML = `<p class="text-sm text-red-600">${esc(error.message)}</p>`; return; }
-        list.innerHTML = (data && data.length) ? data.map((c) => `
+        if (search) q = q.or(`author_name.ilike.%${search}%,content.ilike.%${search}%`);
+        return q;
+      }
+
+      function card(c) {
+        const slug = c.blog_templum_posts?.slug;
+        const post = c.blog_templum_posts?.title || "—";
+        const badge = c.status === "approved" ? "bg-green-100 text-green-700" : c.status === "spam" ? "bg-gray-200 text-gray-600" : "bg-amber-100 text-amber-700";
+        const label = c.status === "approved" ? "aprovado" : c.status === "spam" ? "rejeitado" : "pendente";
+        return `
           <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
             <div class="flex items-start justify-between gap-4">
               <div class="min-w-0">
-                <p class="text-sm"><b>${esc(c.author_name)}</b> <span class="text-gray-400">· ${esc(c.author_email) || ""} · ${fmt(c.created_at)}</span></p>
-                <p class="text-xs text-gray-400 mt-0.5">em: ${esc(c.blog_templum_posts?.title) || "—"}</p>
-                <p class="text-sm text-gray-700 mt-2">${esc(c.content)}</p>
+                <p class="text-sm"><b>${esc(c.author_name)}</b> <span class="text-gray-400">${c.author_email ? "· " + esc(c.author_email) : ""} · ${fmt(c.created_at)}</span></p>
+                <p class="text-xs text-gray-400 mt-0.5">em: ${slug ? `<a href="https://certificacaoiso.com.br/${esc(slug)}/" target="_blank" rel="noopener" class="text-brand-ink hover:underline">${esc(post)}</a>` : esc(post)}</p>
+                <p class="text-sm text-gray-700 mt-2 whitespace-pre-line">${esc(c.content)}</p>
               </div>
-              <span class="text-[0.7rem] font-bold px-2.5 py-1 rounded-full shrink-0 ${c.status === "approved" ? "bg-green-100 text-green-700" : c.status === "spam" ? "bg-gray-200 text-gray-600" : "bg-amber-100 text-amber-700"}">${c.status}</span>
+              <span class="text-[0.7rem] font-bold px-2.5 py-1 rounded-full shrink-0 ${badge}">${label}</span>
             </div>
             <div class="flex gap-2 mt-3">
               ${c.status !== "approved" ? `<button data-act="approved" data-id="${c.id}" class="px-3 py-1.5 rounded-full bg-green-600 text-white text-xs font-bold">Aprovar</button>` : ""}
               ${c.status !== "spam" ? `<button data-act="spam" data-id="${c.id}" class="px-3 py-1.5 rounded-full border border-gray-300 text-xs font-bold">Rejeitar</button>` : ""}
               <button data-del="${c.id}" class="px-3 py-1.5 rounded-full border border-red-200 text-red-600 text-xs font-bold">Excluir</button>
             </div>
-          </div>`).join("") : '<p class="text-sm text-gray-400">Nenhum comentário aqui.</p>';
+          </div>`;
+      }
+
+      function wire() {
         list.querySelectorAll("[data-act]").forEach((b) => b.addEventListener("click", async () => {
-          await supa.from("blog_templum_comments").update({ status: b.dataset.act }).eq("id", b.dataset.id); load();
+          await supa.from(T).update({ status: b.dataset.act }).eq("id", b.dataset.id); reload();
         }));
         list.querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", async () => {
-          if (confirm("Excluir comentário?")) { await supa.from("blog_templum_comments").delete().eq("id", b.dataset.del); load(); }
+          if (confirm("Excluir comentário?")) { await supa.from(T).delete().eq("id", b.dataset.del); reload(); }
         }));
         createIcons({ icons });
       }
+
+      async function load(append) {
+        if (!append) { offset = 0; list.innerHTML = '<p class="text-sm text-gray-400">Carregando…</p>'; }
+        // total p/ paginação
+        if (!append) { const { count } = await baseQuery(true); total = count || 0; }
+        const { data, error } = await baseQuery(false).order("created_at", { ascending: false }).range(offset, offset + PAGE - 1);
+        if (error) { list.innerHTML = `<p class="text-sm text-red-600">${esc(error.message)}</p>`; return; }
+        const html = (data || []).map(card).join("");
+        if (append) list.insertAdjacentHTML("beforeend", html);
+        else list.innerHTML = html || '<p class="text-sm text-gray-400">Nenhum comentário aqui.</p>';
+        offset += (data || []).length;
+        moreBtn.classList.toggle("hidden", offset >= total);
+        countEl.textContent = total ? `Mostrando ${Math.min(offset, total)} de ${total}` : "";
+        wire();
+      }
+      const reload = () => { counts(); load(false); };
+
       document.querySelectorAll("#tabs [data-tab]").forEach((b) => b.addEventListener("click", () => {
         tab = b.dataset.tab;
         document.querySelectorAll("#tabs .tab").forEach((x) => x.classList.remove("tab-on"));
-        b.classList.add("tab-on"); load();
+        b.classList.add("tab-on"); load(false);
       }));
-      load();
+      moreBtn.addEventListener("click", () => load(true));
+      let t; $("q").addEventListener("input", (e) => { clearTimeout(t); t = setTimeout(() => { search = e.target.value.trim(); load(false); }, 350); });
+
+      counts(); load(false);
     }
   </script>
 </CmsLayout>

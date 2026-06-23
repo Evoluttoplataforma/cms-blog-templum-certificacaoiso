@@ -28,7 +28,8 @@ const navBottom = [
   </head>
   <body class="bg-[#F3F3F1] font-sans text-brand-navy antialiased">
     <!-- SIDEBAR -->
-    <aside class="hidden lg:flex w-64 fixed inset-y-0 left-0 bg-brand-navy text-gray-300 flex-col">
+    <div id="sb-backdrop" class="fixed inset-0 bg-black/40 z-30 hidden lg:hidden"></div>
+    <aside id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-brand-navy text-gray-300 flex flex-col z-40 -translate-x-full lg:translate-x-0 transition-transform duration-200">
       <div class="px-6 py-5 flex items-center gap-2 border-b border-white/10">
         <img src={`${B}/logo.png`} alt="Templum" class="h-7 brightness-0 invert" />
         <span class="text-[0.6rem] font-extrabold tracking-widest bg-brand-orange/20 text-brand-orange px-2 py-0.5 rounded">CMS</span>
@@ -50,7 +51,7 @@ const navBottom = [
         <span id="sb-avatar" class="w-9 h-9 rounded-full bg-brand-gradient grid place-items-center text-white text-xs font-bold">··</span>
         <div class="min-w-0 flex-1">
           <p id="sb-name" class="text-sm font-semibold text-white truncate">—</p>
-          <p id="sb-role" class="text-xs text-gray-500">—</p>
+          <p id="sb-role" class="text-xs text-gray-500 truncate">—</p>
         </div>
         <button id="logout" title="Sair" class="text-gray-400 hover:text-white"><i data-lucide="log-out" class="w-[18px] h-[18px]"></i></button>
       </div>
@@ -58,9 +59,12 @@ const navBottom = [
 
     <!-- CONTEÚDO -->
     <div class="lg:ml-64 min-h-screen flex flex-col">
-      <header class="sticky top-0 z-20 bg-white border-b border-gray-200 h-[68px] px-6 flex items-center justify-between">
-        <h1 class="text-lg font-extrabold tracking-tight">{title}</h1>
-        <div class="flex items-center gap-2"><slot name="actions" /></div>
+      <header class="sticky top-0 z-20 bg-white border-b border-gray-200 h-[68px] px-4 lg:px-6 flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2 min-w-0">
+          <button id="sb-toggle" class="lg:hidden p-2 -ml-1 text-brand-navy"><i data-lucide="menu" class="w-5 h-5"></i></button>
+          <h1 class="text-base lg:text-lg font-extrabold tracking-tight truncate">{title}</h1>
+        </div>
+        <div class="flex items-center gap-2 shrink-0"><slot name="actions" /></div>
       </header>
       <main class="flex-1 p-6"><slot /></main>
     </div>
@@ -68,6 +72,13 @@ const navBottom = [
     <script>
       import { createIcons, icons } from "lucide";
       createIcons({ icons });
+      // drawer mobile
+      const sb = document.getElementById("sidebar"), bd = document.getElementById("sb-backdrop"), tg = document.getElementById("sb-toggle");
+      const openSb = () => { sb?.classList.remove("-translate-x-full"); bd?.classList.remove("hidden"); };
+      const closeSb = () => { sb?.classList.add("-translate-x-full"); bd?.classList.add("hidden"); };
+      tg?.addEventListener("click", openSb);
+      bd?.addEventListener("click", closeSb);
+      sb?.querySelectorAll("a").forEach((a) => a.addEventListener("click", closeSb));
     </script>
     <script>
       import { supa, requireAuth, BASE } from "../lib/supa.ts";

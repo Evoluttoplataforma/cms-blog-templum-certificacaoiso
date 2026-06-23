@@ -243,6 +243,11 @@
     async function persist(status) {
       const title = $("title").value.trim(), slug = $("slug").value.trim();
       if (!title || !slug) { msg.textContent = "Título e slug são obrigatórios."; return; }
+      // rede de segurança: se o conteúdo está CRU/bagunçado (jogaram o texto sem estruturar),
+      // estrutura automaticamente antes de salvar. Não mexe em conteúdo já formatado (com H2/H3).
+      const cur = editor.innerHTML;
+      const messy = /&lt;\s*br/i.test(cur) || (!/<h[23]/i.test(cur) && editor.innerText.trim().length > 600);
+      if (messy) { editor.innerHTML = structureHTML(cur); updateCounts(); }
       const txt = editor.innerText.trim(); const wc = txt ? txt.split(/\s+/).length : 0;
       const row = {
         title, slug, content: editor.innerHTML, excerpt: $("seo_description").value || null,
